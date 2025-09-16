@@ -1,0 +1,9 @@
+{
+  "name": "ICE",
+  "author": "steve@corbett.ca",
+  "version": "2.2.0",
+  "targetAppName": "ImageViewer",
+  "targetAppVersion": "2.2",
+  "shortDescription": "Semantic tagging and searching of images.",
+  "longDescription": "Originally the Image Classification Engine, ICE allows you to add semantic tags to images and then search for them by tag."
+}
