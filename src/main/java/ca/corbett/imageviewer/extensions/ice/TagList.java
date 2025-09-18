@@ -1,19 +1,27 @@
 package ca.corbett.imageviewer.extensions.ice;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class TagList {
     private static final Logger log = Logger.getLogger(TagList.class.getName());
 
     private final Set<String> tags = new LinkedHashSet<>();
+    private File persistenceFile;
 
     public TagList() {
-
+        persistenceFile = null;
     }
 
     public static TagList of(String commaSeparatedInput) {
@@ -27,6 +35,33 @@ public class TagList {
             list.add(tag);
         }
         return list;
+    }
+
+    public static TagList fromFile(File inputFile) {
+        log.info("TagList.fromFile("+inputFile.getAbsolutePath()+") invoked");
+        TagList tagList = new TagList();
+        tagList.setPersistenceFile(inputFile);
+        try (BufferedReader reader = new BufferedReader(new FileReader(inputFile))) {
+            String line = reader.readLine();
+            while (line != null) {
+                log.info("Read line: \""+line+"\"");
+                tagList.add(line);
+                line = reader.readLine();
+            }
+        }
+        catch (IOException ioe) {
+            log.log(Level.SEVERE, "IceExtension: problem reading tag list file: "+ioe.getMessage(), ioe);
+        }
+        log.info("returning "+tagList.size()+ "tags.");
+        return tagList;
+    }
+
+    public void setPersistenceFile(File f) {
+        this.persistenceFile = f;
+    }
+
+    public File getPersistenceFile() {
+        return persistenceFile;
     }
 
     public int size() {
@@ -68,6 +103,21 @@ public class TagList {
             tag = "";
         }
         return tag.toLowerCase().trim();
+    }
+
+    public void save() {
+        if (persistenceFile == null) {
+            return;
+        }
+
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(persistenceFile))) {
+            for (String tag : getTags()) {
+                writer.write(tag+System.lineSeparator());
+            }
+        }
+        catch (IOException ioe) {
+            log.log(Level.SEVERE, "IceExtension: problem saving tag file: "+ioe.getMessage(), ioe);
+        }
     }
 
     @Override
