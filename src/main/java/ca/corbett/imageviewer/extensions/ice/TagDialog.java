@@ -37,7 +37,7 @@ public class TagDialog extends JDialog {
         textField = LongTextField.ofDynamicSizingMultiLine("Tags:", 6);
         textField.setText(tagList.toString());
         textField.setMargins(new Margins(16, 20, 0, 0, 4));
-        textField.setHelpText("Enter tags as a comma-separated list.");
+        textField.setHelpText("<html>Enter tags as a comma-separated list.<br>Whitespace is ignored between tags.</html>");
         formPanel.add(textField);
         return formPanel;
     }

@@ -41,6 +41,9 @@ public class TagList {
         log.info("TagList.fromFile("+inputFile.getAbsolutePath()+") invoked");
         TagList tagList = new TagList();
         tagList.setPersistenceFile(inputFile);
+        if (! inputFile.exists()) {
+            return tagList; // this is not an error... just return an empty list
+        }
         try (BufferedReader reader = new BufferedReader(new FileReader(inputFile))) {
             String line = reader.readLine();
             while (line != null) {

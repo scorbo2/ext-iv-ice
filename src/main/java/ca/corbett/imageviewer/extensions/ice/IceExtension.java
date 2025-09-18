@@ -19,6 +19,7 @@ import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.KeyStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
@@ -87,7 +88,10 @@ public class IceExtension extends ImageViewerExtension {
     public List<JMenu> getTopLevelMenus(MainWindow.BrowseMode browseMode) {
         JMenu iceMenu = new JMenu("ICE");
         iceMenu.setMnemonic(KeyEvent.VK_I);
-        iceMenu.add(new JMenuItem("TODO - ice menu items here"));
+        JMenuItem editTagsItem = new JMenuItem(new EditTagsAction());
+        editTagsItem.setMnemonic(KeyEvent.VK_G);
+        editTagsItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_G, InputEvent.CTRL_DOWN_MASK));
+        iceMenu.add(editTagsItem);
         return List.of(iceMenu);
     }
 
@@ -100,7 +104,7 @@ public class IceExtension extends ImageViewerExtension {
     public boolean handleKeyboardShortcut(KeyEvent e) {
         if (e.getKeyCode() == KeyEvent.VK_G) {
             if ((e.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) > 0) {
-                new TagDialog("Image tags", new TagList()).setVisible(true);
+                new EditTagsAction().actionPerformed(null);
                 return true;
             }
         }
