@@ -20,6 +20,13 @@
             <artifactId>imageviewer</artifactId>
             <version>2.2-SNAPSHOT</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>5.12.1</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
 </project>
