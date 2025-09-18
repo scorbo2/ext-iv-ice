@@ -4,6 +4,7 @@ import ca.corbett.extensions.AppExtensionInfo;
 import ca.corbett.extras.LookAndFeelManager;
 import ca.corbett.extras.RedispatchingMouseAdapter;
 import ca.corbett.extras.properties.AbstractProperty;
+import ca.corbett.extras.properties.BooleanProperty;
 import ca.corbett.extras.properties.ComboProperty;
 import ca.corbett.extras.properties.IntegerProperty;
 import ca.corbett.extras.properties.LabelProperty;
@@ -40,7 +41,7 @@ public class IceExtension extends ImageViewerExtension {
     private static final String extInfoLocation = "/ca/corbett/imageviewer/extensions/ice/extInfo.json";
     private final AppExtensionInfo extInfo;
 
-    private static final String[] validPositions = {"Top", "Bottom"};
+    private static final String[] validPositions = {"Above main image", "Below main image"};
     private static final String fontSizePropName = "Thumbnails.Companion files.linkFontSize";
 
     private TagPanel tagPanel;
@@ -60,7 +61,7 @@ public class IceExtension extends ImageViewerExtension {
     @Override
     protected List<AbstractProperty> createConfigProperties() {
         List<AbstractProperty> list = new ArrayList<>();
-        list.add(new LabelProperty("ICE.General.warningLabel", "Note: restart is required to change tag panel position."));
+        list.add(new BooleanProperty("ICE.General.showTagPanel", "Show tag panel on main image tab", true));
         list.add(new ComboProperty<>("ICE.General.position", "Tag panel position:", Arrays.asList(validPositions), 1, false));
         list.add(new IntegerProperty(fontSizePropName, "Hyperlink font size", 10, 8, 16, 1));
         return list;
@@ -80,6 +81,9 @@ public class IceExtension extends ImageViewerExtension {
 
     @Override
     public JComponent getExtraPanelComponent(ExtraPanelPosition position) {
+        if (! ((BooleanProperty)AppConfig.getInstance().getPropertiesManager().getProperty("ICE.General.showTagPanel")).getValue()) {
+            return null;
+        }
         if (position == getConfiguredPanelPosition()) {
             tagPanel = new TagPanel();
             return tagPanel;
