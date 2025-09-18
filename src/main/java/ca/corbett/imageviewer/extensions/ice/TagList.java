@@ -38,7 +38,6 @@ public class TagList {
     }
 
     public static TagList fromFile(File inputFile) {
-        log.info("TagList.fromFile("+inputFile.getAbsolutePath()+") invoked");
         TagList tagList = new TagList();
         tagList.setPersistenceFile(inputFile);
         if (! inputFile.exists()) {
@@ -47,7 +46,6 @@ public class TagList {
         try (BufferedReader reader = new BufferedReader(new FileReader(inputFile))) {
             String line = reader.readLine();
             while (line != null) {
-                log.info("Read line: \""+line+"\"");
                 tagList.add(line);
                 line = reader.readLine();
             }
@@ -55,7 +53,6 @@ public class TagList {
         catch (IOException ioe) {
             log.log(Level.SEVERE, "IceExtension: problem reading tag list file: "+ioe.getMessage(), ioe);
         }
-        log.info("returning "+tagList.size()+ "tags.");
         return tagList;
     }
 
