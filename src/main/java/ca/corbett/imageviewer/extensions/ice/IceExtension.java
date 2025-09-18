@@ -11,6 +11,7 @@ import ca.corbett.imageviewer.ui.MainWindow;
 import javax.swing.JComponent;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -69,5 +70,21 @@ public class IceExtension extends ImageViewerExtension {
         iceMenu.setMnemonic(KeyEvent.VK_I);
         iceMenu.add(new JMenuItem("TODO - ice menu items here"));
         return List.of(iceMenu);
+    }
+
+    /**
+     * I wanted to use ctrl+t for "tag" but it was already in use by the
+     * image transform extension (ctrl+t for "transform"). One day I'll
+     * make extension keyboard shortcuts user-configurable.
+     */
+    @Override
+    public boolean handleKeyboardShortcut(KeyEvent e) {
+        if (e.getKeyCode() == KeyEvent.VK_G) {
+            if ((e.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) > 0) {
+                new TagDialog("Image tags", new TagList()).setVisible(true);
+                return true;
+            }
+        }
+        return false;
     }
 }
