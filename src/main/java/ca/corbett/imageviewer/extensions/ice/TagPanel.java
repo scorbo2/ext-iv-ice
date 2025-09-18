@@ -4,36 +4,35 @@ import ca.corbett.forms.Alignment;
 import ca.corbett.forms.FormPanel;
 import ca.corbett.forms.Margins;
 import ca.corbett.forms.fields.LongTextField;
-import ca.corbett.forms.fields.PanelField;
 
-import javax.swing.JButton;
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
 
 /**
- * Represents an input panel where the user can view/edit the tag list for a given image.
+ * Represents a read-only panel for displaying tags for the current image.
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
 public class TagPanel extends JPanel {
+    private LongTextField textField;
+
     public TagPanel() {
         setLayout(new BorderLayout());
         FormPanel formPanel = new FormPanel(Alignment.TOP_CENTER);
         formPanel.setBorderMargin(6);
-        formPanel.add(LongTextField.ofDynamicSizingMultiLine("Tags (comma-separated):", 1)
-                              .setMargins(new Margins(24, 4, 4, 4, 4)));
+        textField = LongTextField.ofDynamicSizingMultiLine("", 1);
+        textField.setMargins(new Margins(24, 4, 24, 4, 4));
+        textField.setEnabled(false);
+        textField.setHelpText("Read-only display. Press Ctrl+G to edit tags.");
+        formPanel.add(textField);
         add(formPanel, BorderLayout.CENTER);
+    }
 
-        formPanel = new FormPanel(Alignment.TOP_CENTER);
-        formPanel.setBorderMargin(6);
-        PanelField panelField = new PanelField(new FlowLayout(FlowLayout.LEFT));
-        panelField.setMargins(new Margins(4, 0, 24, 4, 4));
-        JButton button = new JButton("Set");
-        button.setPreferredSize(new Dimension(70,23));
-        panelField.getPanel().add(button);
-        formPanel.add(panelField);
-        add(formPanel, BorderLayout.EAST);
+    public void clearTags() {
+        textField.setText("");
+    }
+
+    public void setTagList(TagList tagList) {
+        textField.setText(tagList.toString());
     }
 }

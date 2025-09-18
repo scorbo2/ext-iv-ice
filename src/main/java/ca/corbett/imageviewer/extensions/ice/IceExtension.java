@@ -43,6 +43,8 @@ public class IceExtension extends ImageViewerExtension {
     private static final String[] validPositions = {"Top", "Bottom"};
     private static final String fontSizePropName = "Thumbnails.Companion files.linkFontSize";
 
+    private TagPanel tagPanel;
+
     public IceExtension() {
         extInfo = AppExtensionInfo.fromExtensionJar(getClass(), extInfoLocation);
         if (extInfo == null) {
@@ -79,7 +81,8 @@ public class IceExtension extends ImageViewerExtension {
     @Override
     public JComponent getExtraPanelComponent(ExtraPanelPosition position) {
         if (position == getConfiguredPanelPosition()) {
-            return new TagPanel();
+            tagPanel = new TagPanel();
+            return tagPanel;
         }
         return null;
     }
@@ -150,7 +153,21 @@ public class IceExtension extends ImageViewerExtension {
 
     @Override
     public void imageSelected(ImageInstance selectedImage) {
-        // TODO load tag list for this image
+        if (tagPanel == null) {
+            return;
+        }
+
+        tagPanel.clearTags();
+        if (! selectedImage.isEmpty()) {
+            File imageFile = selectedImage.getImageFile();
+            if (imageFile != null && imageFile.exists()) {
+                File file = new File(imageFile.getParentFile(),
+                                     FilenameUtils.getBaseName(imageFile.getName())+".ice");
+                if (file.exists()) {
+                    tagPanel.setTagList(TagList.fromFile(file));
+                }
+            }
+        }
     }
 
     @Override
