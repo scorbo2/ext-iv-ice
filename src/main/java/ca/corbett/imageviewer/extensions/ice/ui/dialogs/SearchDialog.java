@@ -85,6 +85,11 @@ public class SearchDialog extends JDialog {
         final SearchThread searchThread = new SearchThread(dirField.getFile(), TagList.of(tagField.getText()), recursiveField.isChecked(), searchMode);
         searchThread.addProgressListener(new MultiProgressAdapter() {
             @Override
+            public void progressCanceled() {
+                getMessageUtil().info("Search was canceled.");
+            }
+
+            @Override
             public void progressComplete() {
                 handleSearchComplete(searchThread.wasCanceled(), searchThread.getSearchResults());
             }

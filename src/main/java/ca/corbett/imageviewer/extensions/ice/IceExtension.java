@@ -9,7 +9,8 @@ import ca.corbett.extras.properties.ComboProperty;
 import ca.corbett.extras.properties.IntegerProperty;
 import ca.corbett.imageviewer.AppConfig;
 import ca.corbett.imageviewer.extensions.ImageViewerExtension;
-import ca.corbett.imageviewer.extensions.ice.actions.EditTagsAction;
+import ca.corbett.imageviewer.extensions.ice.actions.TagMultipleImagesAction;
+import ca.corbett.imageviewer.extensions.ice.actions.TagSingleImageAction;
 import ca.corbett.imageviewer.extensions.ice.actions.SearchAction;
 import ca.corbett.imageviewer.extensions.ice.ui.TagPanel;
 import ca.corbett.imageviewer.ui.ImageInstance;
@@ -101,10 +102,15 @@ public class IceExtension extends ImageViewerExtension {
         JMenuItem searchItem = new JMenuItem(new SearchAction());
         iceMenu.add(searchItem);
 
-        JMenuItem editTagsItem = new JMenuItem(new EditTagsAction());
-        editTagsItem.setMnemonic(KeyEvent.VK_G);
-        editTagsItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_G, InputEvent.CTRL_DOWN_MASK));
-        iceMenu.add(editTagsItem);
+        JMenuItem tagSingleImageItem = new JMenuItem(new TagSingleImageAction());
+        tagSingleImageItem.setMnemonic(KeyEvent.VK_G);
+        tagSingleImageItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_G, InputEvent.CTRL_DOWN_MASK));
+        iceMenu.add(tagSingleImageItem);
+
+        if (browseMode == MainWindow.BrowseMode.FILE_SYSTEM) {
+            JMenuItem tagMultiImagesItem = new JMenuItem(new TagMultipleImagesAction("Tag images..."));
+            iceMenu.add(tagMultiImagesItem);
+        }
 
         return List.of(iceMenu);
     }
@@ -118,7 +124,7 @@ public class IceExtension extends ImageViewerExtension {
     public boolean handleKeyboardShortcut(KeyEvent e) {
         if (e.getKeyCode() == KeyEvent.VK_G) {
             if ((e.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) > 0) {
-                new EditTagsAction().actionPerformed(null);
+                new TagSingleImageAction().actionPerformed(null);
                 return true;
             }
         }

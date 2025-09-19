@@ -96,6 +96,10 @@ public class TagList {
         }
     }
 
+    public void addAll(TagList other) {
+        tags.addAll(other.tags);
+    }
+
     public void add(String tag) {
         String strippedTag = stripTag(tag);
         if (strippedTag.isBlank()) {

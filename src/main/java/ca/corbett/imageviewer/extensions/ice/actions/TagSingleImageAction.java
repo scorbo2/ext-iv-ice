@@ -10,9 +10,9 @@ import javax.swing.AbstractAction;
 import java.awt.event.ActionEvent;
 import java.io.File;
 
-public class EditTagsAction extends AbstractAction {
+public class TagSingleImageAction extends AbstractAction {
 
-    public EditTagsAction() {
+    public TagSingleImageAction() {
         super("Edit image tags");
     }
 
