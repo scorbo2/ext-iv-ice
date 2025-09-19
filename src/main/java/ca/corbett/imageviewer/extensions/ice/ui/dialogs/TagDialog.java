@@ -1,9 +1,10 @@
-package ca.corbett.imageviewer.extensions.ice;
+package ca.corbett.imageviewer.extensions.ice.ui.dialogs;
 
 import ca.corbett.forms.Alignment;
 import ca.corbett.forms.FormPanel;
 import ca.corbett.forms.Margins;
 import ca.corbett.forms.fields.LongTextField;
+import ca.corbett.imageviewer.extensions.ice.TagList;
 import ca.corbett.imageviewer.ui.MainWindow;
 
 import javax.swing.BorderFactory;

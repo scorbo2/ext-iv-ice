@@ -1,5 +1,7 @@
 package ca.corbett.imageviewer.extensions.ice;
 
+import ca.corbett.imageviewer.extensions.ice.ui.dialogs.TagDialog;
+
 import javax.swing.SwingUtilities;
 import java.awt.Component;
 import java.awt.event.MouseAdapter;

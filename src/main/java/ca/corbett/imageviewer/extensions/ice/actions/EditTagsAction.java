@@ -1,5 +1,7 @@
-package ca.corbett.imageviewer.extensions.ice;
+package ca.corbett.imageviewer.extensions.ice.actions;
 
+import ca.corbett.imageviewer.extensions.ice.ui.dialogs.TagDialog;
+import ca.corbett.imageviewer.extensions.ice.TagList;
 import ca.corbett.imageviewer.ui.ImageInstance;
 import ca.corbett.imageviewer.ui.MainWindow;
 import org.apache.commons.io.FilenameUtils;
