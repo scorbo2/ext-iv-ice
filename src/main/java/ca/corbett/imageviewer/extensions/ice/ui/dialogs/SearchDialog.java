@@ -125,8 +125,7 @@ public class SearchDialog extends JDialog {
     private FormPanel buildFormPanel() {
         formPanel = new FormPanel(Alignment.TOP_CENTER);
         formPanel.setBorderMargin(16);
-        formPanel.setEnabled(false);
-
+        
         searchNameField = new ShortTextField("Search name:", 10);
         searchNameField.setText(getUniqueSearchName());
         searchNameField.setAllowBlank(false);
