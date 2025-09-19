@@ -10,6 +10,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
+/**
+ * TODO search via index if available
+ *
+ * @author <a href="https://github.com/scorbo2">scorbo2</a>
+ */
 public class SearchThread extends MultiProgressWorker {
 
     private static final Logger log = Logger.getLogger(SearchThread.class.getName());

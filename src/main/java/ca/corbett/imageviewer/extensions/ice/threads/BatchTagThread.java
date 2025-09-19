@@ -9,6 +9,11 @@ import org.apache.commons.io.FilenameUtils;
 import java.io.File;
 import java.util.List;
 
+/**
+ * TODO update search index if available
+ *
+ * @author <a href="https://github.com/scorbo2">scorbo2</a>
+ */
 public class BatchTagThread extends SimpleProgressWorker {
 
     private final File startDir;
