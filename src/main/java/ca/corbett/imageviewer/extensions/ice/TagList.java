@@ -7,16 +7,15 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.SortedSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class TagList {
     private static final Logger log = Logger.getLogger(TagList.class.getName());
+    private static final Set<Character> DISALLOWED_TAG_CHARS = Set.of('{', '}', '|', ',');
 
     private final Set<String> tags = new LinkedHashSet<>();
     private File persistenceFile;
@@ -118,17 +117,29 @@ public class TagList {
     }
 
     /**
-     * Convert to lowercase, remove leading and trailing whitespace, convert null to empty string.
+     * Convert to lowercase, remove leading and trailing whitespace,
+     * remove DISALLOWED characters, convert null to empty string.
      */
     protected static String stripTag(String tag) {
         if (tag == null) {
-            tag = "";
+            return "";
         }
-        return tag.toLowerCase().trim();
+        tag = tag.toLowerCase().trim();
+        StringBuilder sb = new StringBuilder(tag.length());
+        for (char c : tag.toCharArray()) {
+            if (!DISALLOWED_TAG_CHARS.contains(c)) {
+                sb.append(c);
+            }
+            else {
+                log.warning("TagList: characters { } | , are not allowed in tags - stripping.");
+            }
+        }
+        return sb.toString();
     }
 
     public void save() {
         if (persistenceFile == null) {
+            log.warning("TagList: no persistence file set, unable to save.");
             return;
         }
 
