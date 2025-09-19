@@ -7,6 +7,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -70,6 +71,23 @@ public class TagList {
 
     public void clear() {
         tags.clear();
+    }
+
+    public boolean containsAll(TagList other) {
+        return tags.containsAll(other.tags);
+    }
+
+    public boolean containsAny(TagList other) {
+        for (String tag : other.getTags()) {
+            if (tags.contains(tag)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean containsNone(TagList other) {
+        return ! containsAny(other);
     }
 
     public void addAll(List<String> tags) {

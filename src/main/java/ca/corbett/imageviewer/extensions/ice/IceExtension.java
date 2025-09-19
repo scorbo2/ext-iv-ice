@@ -10,6 +10,7 @@ import ca.corbett.extras.properties.IntegerProperty;
 import ca.corbett.imageviewer.AppConfig;
 import ca.corbett.imageviewer.extensions.ImageViewerExtension;
 import ca.corbett.imageviewer.extensions.ice.actions.EditTagsAction;
+import ca.corbett.imageviewer.extensions.ice.actions.SearchAction;
 import ca.corbett.imageviewer.extensions.ice.ui.TagPanel;
 import ca.corbett.imageviewer.ui.ImageInstance;
 import ca.corbett.imageviewer.ui.MainWindow;
@@ -96,10 +97,15 @@ public class IceExtension extends ImageViewerExtension {
     public List<JMenu> getTopLevelMenus(MainWindow.BrowseMode browseMode) {
         JMenu iceMenu = new JMenu("ICE");
         iceMenu.setMnemonic(KeyEvent.VK_I);
+
+        JMenuItem searchItem = new JMenuItem(new SearchAction());
+        iceMenu.add(searchItem);
+
         JMenuItem editTagsItem = new JMenuItem(new EditTagsAction());
         editTagsItem.setMnemonic(KeyEvent.VK_G);
         editTagsItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_G, InputEvent.CTRL_DOWN_MASK));
         iceMenu.add(editTagsItem);
+
         return List.of(iceMenu);
     }
 
@@ -128,19 +134,33 @@ public class IceExtension extends ImageViewerExtension {
         }
 
         // Now make sure there's an image file with a matching name.
+        return getMatchingImageFile(candidateFile) != null;
+    }
+
+    /**
+     * Given an ice file, return its matching image file, if any.
+     * Note that there's a subtle bug here where a single companion file could have multiple
+     * matching image files if poor filename discipline is at play. For example:
+     * image01.jpg, image01.png, image01.gif, and image01.jpeg could all exist in the same dir.
+     * In that case, what file does image01.ice match? The unfortunate answer: the first one
+     * that this method finds. Sigh. The only fix for this is to change the approach to
+     * companion file naming such that we use the ENTIRE name and not just the base name.
+     * In the above example, the companion file(s) would be image01.jpg.ice, image01.png.ice and etc.
+     * But that's ugly and I kind of don't want to do it. Right now the workaround is
+     * "be smarter about how you name your files".
+     */
+    public static File getMatchingImageFile(File companionFile) {
         // I hate that this code is case-sensitive...
         String[] imageExtensions = new String[]{"gif", "GIF", "jpg", "JPG", "jpeg", "JPEG", "png", "PNG", "tiff", "bmp"};
-        File dir = candidateFile.getParentFile();
-        String basename = FilenameUtils.getBaseName(candidateFile.getName());
-        boolean matchingImageFound = false;
+        File dir = companionFile.getParentFile();
+        String basename = FilenameUtils.getBaseName(companionFile.getName());
         for (String ext : imageExtensions) {
             File test = new File(dir, basename + "." + ext);
             if (test.exists()) {
-                matchingImageFound = true;
-                break;
+                return test;
             }
         }
-        return matchingImageFound;
+        return null;
     }
 
     @Override
