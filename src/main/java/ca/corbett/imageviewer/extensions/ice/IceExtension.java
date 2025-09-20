@@ -67,7 +67,7 @@ public class IceExtension extends ImageViewerExtension {
         list.add(new BooleanProperty("ICE.General.showTagPanel", "Show tag panel on main image tab", true));
         list.add(new ComboProperty<>("ICE.General.position", "Tag panel position:", Arrays.asList(validPositions), 1, false));
         list.add(new IntegerProperty(fontSizePropName, "Hyperlink font size", 10, 8, 16, 1));
-        // TODO enable search index
+        list.add(new BooleanProperty(TagIndex.PROP_NAME, "Enable tag index for faster searches", true));
         return list;
     }
 
