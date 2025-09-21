@@ -55,6 +55,25 @@ public class TagIndex {
     // TODO add entry: needs tag file, image file, and tag list
     // TODO search entries: needs tags to search for and search mode
 
+    public boolean isIndexed(File imageFile) {
+        return indexEntries.containsKey(imageFile.getAbsolutePath());
+    }
+
+    public boolean containsAll(File imageFile, TagList tags) {
+        TagIndexEntry indexEntry = indexEntries.get(imageFile.getAbsolutePath());
+        return indexEntry != null && indexEntry.containsAll(tags);
+    }
+
+    public boolean containsAny(File imageFile, TagList tags) {
+        TagIndexEntry indexEntry = indexEntries.get(imageFile.getAbsolutePath());
+        return indexEntry != null && indexEntry.containsAny(tags);
+    }
+
+    public boolean containsNone(File imageFile, TagList tags) {
+        TagIndexEntry indexEntry = indexEntries.get(imageFile.getAbsolutePath());
+        return indexEntry != null && indexEntry.containsNone(tags);
+    }
+
     /**
      * Scans the given directory (with optional recursion) looking for any ice tag files,
      * and updates/inserts entries in our tag index in memory as needed.
@@ -120,10 +139,13 @@ public class TagIndex {
     }
 
     public void load() {
-        if (! isEnabled()) {
-            log.info("IceExtension: tag index is disabled. You can enable it in application settings for increased search performance.");
-            return;
-        }
+        // Hmm, I think the load should happen even if the tag index is disabled.
+        // I mean, if it exists, let's load it up so it's ready to go if indexing is later enabled.
+        //if (! isEnabled()) {
+        //    log.info("IceExtension: tag index is disabled. You can enable it in application settings for increased search performance.");
+        //    return;
+        //}
+        
         if (! indexFile.exists()) {
             log.info("IceExtension: tag index file not found.");
             return;

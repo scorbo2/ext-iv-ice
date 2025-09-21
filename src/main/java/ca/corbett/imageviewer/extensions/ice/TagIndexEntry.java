@@ -99,6 +99,27 @@ public class TagIndexEntry {
         return tagList;
     }
 
+    public boolean containsAll(TagList tags) {
+        if (tagList == null) {
+            return false;
+        }
+        return tagList.containsAll(tags);
+    }
+
+    public boolean containsAny(TagList tags) {
+        if (tagList == null) {
+            return false;
+        }
+        return tagList.containsAny(tags);
+    }
+
+    public boolean containsNone(TagList tags) {
+        if (tagList == null) {
+            return false;
+        }
+        return tagList.containsNone(tags);
+    }
+
     public void setTagList(TagList tagList) {
         tagListRawString = tagList.toString();
         this.tagList = TagList.of(tagListRawString); // make our own copy of it for immutability

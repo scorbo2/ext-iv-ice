@@ -3,6 +3,7 @@ package ca.corbett.imageviewer.extensions.ice.threads;
 import ca.corbett.extras.io.FileSystemUtil;
 import ca.corbett.extras.progress.MultiProgressWorker;
 import ca.corbett.imageviewer.extensions.ice.IceExtension;
+import ca.corbett.imageviewer.extensions.ice.TagIndex;
 import ca.corbett.imageviewer.extensions.ice.TagList;
 
 import java.io.File;
@@ -56,6 +57,8 @@ public class SearchThread extends MultiProgressWorker {
         searchResults.clear();
         wasCanceled = false;
         int currentStep = 0;
+        int indexHits = 0;
+        int indexMisses = 0;
         for (File candidateFile : iceFiles) {
             log.fine("ICE SearchThread: Considering "+candidateFile.getAbsolutePath());
             fireMajorProgressUpdate(1, iceFiles.size(), "Searching...");
@@ -63,12 +66,29 @@ public class SearchThread extends MultiProgressWorker {
             File imageFile = IceExtension.getMatchingImageFile(candidateFile);
             if (imageFile != null) {
                 log.fine("ICE SearchThread: Found matching image file "+imageFile.getAbsolutePath());
-                TagList tagList = TagList.fromFile(candidateFile);
-                boolean isMatch = switch (searchMode) {
-                    case CONTAINS_ALL -> tagList.containsAll(searchTags);
-                    case CONTAINS_ANY -> tagList.containsAny(searchTags);
-                    case CONTAINS_NONE -> tagList.containsNone(searchTags);
-                };
+
+                boolean isMatch;
+
+                // Give the tag index first crack at it:
+                if (TagIndex.isEnabled() && TagIndex.getInstance().isIndexed(imageFile)) {
+                    isMatch = switch (searchMode) {
+                        case CONTAINS_ALL -> TagIndex.getInstance().containsAll(imageFile, searchTags);
+                        case CONTAINS_ANY -> TagIndex.getInstance().containsAny(imageFile, searchTags);
+                        case CONTAINS_NONE -> TagIndex.getInstance().containsNone(imageFile, searchTags);
+                    };
+                    indexHits++;
+                }
+
+                else {
+                    TagList tagList = TagList.fromFile(candidateFile);
+                    isMatch = switch (searchMode) {
+                        case CONTAINS_ALL -> tagList.containsAll(searchTags);
+                        case CONTAINS_ANY -> tagList.containsAny(searchTags);
+                        case CONTAINS_NONE -> tagList.containsNone(searchTags);
+                    };
+                    indexMisses++;
+                }
+
                 if (isMatch) {
                     log.fine("ICE SearchThread: search matched!");
                     searchResults.add(imageFile);
@@ -91,7 +111,16 @@ public class SearchThread extends MultiProgressWorker {
             fireProgressCanceled();
         }
         else {
-            log.fine("ICE SearchThread: search complete with "+searchResults.size()+" results.");
+            if (TagIndex.isEnabled()) {
+                log.info("IceExtension: search complete with " + searchResults.size() + " results ("
+                                 + iceFiles.size() + " tag files found, "
+                                 + indexHits + " indexed, "
+                                 + indexMisses + " not indexed).");
+            }
+            else {
+                log.info("IceExtension: search complete with "+searchResults.size() + " results ("
+                                 + "tag index is disabled! Enable it in application settings to speed up searches)");
+            }
             fireProgressComplete();
         }
     }
