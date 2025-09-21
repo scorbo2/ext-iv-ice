@@ -9,6 +9,7 @@ import ca.corbett.extras.properties.ComboProperty;
 import ca.corbett.extras.properties.IntegerProperty;
 import ca.corbett.imageviewer.AppConfig;
 import ca.corbett.imageviewer.extensions.ImageViewerExtension;
+import ca.corbett.imageviewer.extensions.ice.actions.ScanDirAction;
 import ca.corbett.imageviewer.extensions.ice.actions.TagMultipleImagesAction;
 import ca.corbett.imageviewer.extensions.ice.actions.TagSingleImageAction;
 import ca.corbett.imageviewer.extensions.ice.actions.SearchAction;
@@ -71,6 +72,16 @@ public class IceExtension extends ImageViewerExtension {
         return list;
     }
 
+    @Override
+    public void onActivate() {
+        TagIndex.getInstance().load();
+    }
+
+    @Override
+    public void onDeactivate() {
+        TagIndex.getInstance().save();
+    }
+
     private ExtraPanelPosition getConfiguredPanelPosition() {
         //noinspection unchecked
         ComboProperty<String> prop = (ComboProperty<String>)AppConfig.getInstance().getPropertiesManager().getProperty("ICE.General.position");
@@ -111,6 +122,12 @@ public class IceExtension extends ImageViewerExtension {
         if (browseMode == MainWindow.BrowseMode.FILE_SYSTEM) {
             JMenuItem tagMultiImagesItem = new JMenuItem(new TagMultipleImagesAction("Tag images..."));
             iceMenu.add(tagMultiImagesItem);
+
+            JMenuItem scanDirItem = new JMenuItem(new ScanDirAction("Tag scan: current directory", false));
+            iceMenu.add(scanDirItem);
+
+            JMenuItem scanDirItemRecursive = new JMenuItem(new ScanDirAction("Tag scan: current directory recursively", true));
+            iceMenu.add(scanDirItemRecursive);
         }
 
         // TODO rebuild/refresh search index

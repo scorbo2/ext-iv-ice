@@ -1,20 +1,21 @@
 package ca.corbett.imageviewer.extensions.ice;
 
+import ca.corbett.extras.io.FileSystemUtil;
 import ca.corbett.extras.properties.BooleanProperty;
 import ca.corbett.imageviewer.AppConfig;
 import ca.corbett.imageviewer.Version;
-import ca.corbett.imageviewer.ui.MainWindow;
-import org.apache.commons.io.FileSystem;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  * TODO If enabled, we'll manage an index file storing all known tags for all known images, along
@@ -33,11 +34,11 @@ public class TagIndex {
 
     private static TagIndex instance;
     private final File indexFile;
-    private final List<TagIndexEntry> entries;
+    private final Map<String, TagIndexEntry> indexEntries;
 
     protected TagIndex() {
-        indexFile = new File(Version.SETTINGS_DIR, "tagIndex.ice");
-        entries = new ArrayList<>();
+        indexFile = new File(Version.SETTINGS_DIR, "tagIndex.ice"); // todo configurable?
+        indexEntries = new HashMap<>();
     }
 
     public static TagIndex getInstance() {
@@ -54,23 +55,81 @@ public class TagIndex {
     // TODO add entry: needs tag file, image file, and tag list
     // TODO search entries: needs tags to search for and search mode
 
+    /**
+     * Scans the given directory (with optional recursion) looking for any ice tag files,
+     * and updates/inserts entries in our tag index in memory as needed.
+     * TODO this should return a worker thread instead of just doing the scan... list might be huge... HUUUGE
+     */
+    public void scan(File dir, boolean isRecursive) {
+        log.info("IceExtension: scanning "+dir.getAbsolutePath());
+        int entriesCreated = 0;
+        int entriesUpdated = 0;
+        int entriesSkippedBecauseUpToDate = 0;
+        List<File> tagFiles = FileSystemUtil.findFiles(dir, isRecursive, "ice");
+        for (File tagFile : tagFiles) {
+            File imageFile = IceExtension.getMatchingImageFile(tagFile);
+            if (imageFile == null) {
+                continue;
+            }
+
+            // Is there an existing entry for this image?
+            TagIndexEntry existingEntry = indexEntries.get(imageFile.getAbsolutePath());
+            if (existingEntry != null) {
+                // And has the tag file changed since we last saw it?
+                if (existingEntry.getTagFileLastModified() != tagFile.lastModified() ||
+                    existingEntry.getTagFileSize() != tagFile.length()) {
+                    existingEntry.setTagFileLastModified(tagFile.lastModified());
+                    existingEntry.setTagFileSize(tagFile.length());
+                    existingEntry.setTagList(TagList.fromFile(tagFile));
+                    entriesUpdated++;
+                }
+                else {
+                    entriesSkippedBecauseUpToDate++;
+                }
+            }
+
+            // Otherwise, make an entry for this guy:
+            else {
+                TagIndexEntry newEntry = new TagIndexEntry();
+                newEntry.setImageFile(imageFile);
+                newEntry.setTagFile(tagFile);
+                newEntry.setTagFileLastModified(tagFile.lastModified());
+                newEntry.setTagFileSize(tagFile.length());
+                newEntry.setTagList(TagList.fromFile(tagFile));
+                indexEntries.put(imageFile.getAbsolutePath(), newEntry);
+                entriesCreated++;
+            }
+        }
+
+        log.info("IceExtension: tag scan complete. Entries added: " + entriesCreated
+                         + "; entries updated: " + entriesUpdated
+                         + "; entries skipped (unchanged): " + entriesSkippedBecauseUpToDate);
+
+        // Auto-save if anything was changed:
+        if (entriesCreated > 0 || entriesUpdated > 0) {
+            save();
+        }
+    }
+
     public void clear() {
-        entries.clear();
+        indexEntries.clear();
     }
 
     public void load() {
         if (! indexFile.exists()) {
+            log.info("IceExtension: tag index file not found.");
             return;
         }
 
         try {
             List<String> lines = FileUtils.readLines(indexFile, (String)null);
-            entries.clear();
+            clear(); // after we read the file but before we start processing it
             for (String line : lines) {
                 if (line.isBlank() || line.trim().startsWith("#")) {
                     continue; // skip blank lines and comments
                 }
-                entries.add(new TagIndexEntry(line));
+                TagIndexEntry indexEntry = new TagIndexEntry(line);
+                indexEntries.put(indexEntry.getImageFilePath(), indexEntry);
             }
         }
         catch (IOException ioe) {
@@ -79,114 +138,23 @@ public class TagIndex {
     }
 
     public void save() {
-        if (indexFile.exists()) {
-            indexFile.delete();
+        // Sort the entries by image file path:
+        List<TagIndexEntry> sortedList = indexEntries.entrySet().stream()
+                                              .sorted(Map.Entry.comparingByKey())
+                                              .map(Map.Entry::getValue)
+                                              .toList();
+
+        List<String> lines = new ArrayList<>(sortedList.size());
+        for (TagIndexEntry entry : sortedList) {
+            lines.add(entry.toString());
         }
-
-        // TODO write it out
-    }
-
-    protected static class TagIndexEntry {
-        private String imageFilePath;
-        private String tagListString;
-        private File imageFile;
-        private TagList tagList;
-        private long lastModified;
-        private long tagFileSize;
-
-        public TagIndexEntry() {
-            tagList = new TagList();
+        try {
+            FileUtils.writeLines(indexFile, lines);
+            log.log(Level.INFO, "IceExtension: saved "+lines.size() + " entries to tag index.");
         }
-
-        public TagIndexEntry(String sourceLine) {
-            String[] parts = sourceLine.split("\\|");
-            if (! parts[0].isBlank()) {
-                imageFilePath = parts[0];
-                imageFile = new File(imageFilePath);
-            }
-            if (parts.length > 1) {
-                tagFileSize = Long.parseLong(parts[1]);
-            }
-            if (parts.length > 2) {
-                lastModified = Long.parseLong(parts[2]);
-            }
-            if (parts.length > 3) {
-                tagListString = parts[3];
-                tagList = TagList.of(tagListString);
-            }
-            else {
-                tagList = new TagList();
-            }
-        }
-
-        public String getImageFilePath() {
-            return imageFilePath;
-        }
-
-        public File getImageFile() {
-            return imageFile;
-        }
-
-        public void setImageFile(File imageFile) {
-            imageFilePath = imageFile.getAbsolutePath();
-            this.imageFile = imageFile;
-        }
-
-        public void setImageFilePath(String path) {
-            imageFilePath = path;
-            imageFile = new File(imageFilePath);
-        }
-
-        public TagList getTagList() {
-            return tagList;
-        }
-
-        public void setTagList(TagList tagList) {
-            tagListString = tagList.toString();
-            this.tagList = TagList.of(tagListString); // make our own copy of it for immutability
-        }
-
-        public long getLastModified() {
-            return lastModified;
-        }
-
-        public void setLastModified(long lastModified) {
-            this.lastModified = lastModified;
-        }
-
-        public long getTagFileSize() {
-            return tagFileSize;
-        }
-
-        public void setTagFileSize(long tagFileSize) {
-            this.tagFileSize = tagFileSize;
-        }
-
-        @Override
-        public boolean equals(Object object) {
-            if (!(object instanceof TagIndexEntry that)) { return false; }
-            return lastModified == that.lastModified
-                    && tagFileSize == that.tagFileSize
-                    && Objects.equals(imageFilePath, that.imageFilePath)
-                    && Objects.equals(tagListString, that.tagListString);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(imageFilePath, tagListString, lastModified, tagFileSize);
-        }
-
-        @Override
-        public String toString() {
-            StringBuilder sb = new StringBuilder();
-            sb.append(imageFilePath == null ? "" : imageFilePath);
-            sb.append("|");
-            sb.append(tagFileSize);
-            sb.append("|");
-            sb.append(lastModified);
-            sb.append("|");
-            sb.append(tagListString == null ? "" : tagListString);
-            return sb.toString();
+        catch (IOException ioe) {
+            log.log(Level.SEVERE, "TagIndex: problem writing tag index: "+ioe.getMessage(), ioe);
         }
     }
+
 }
