@@ -41,7 +41,7 @@ public class BatchTagThread extends SimpleProgressWorker {
             if (isReplaceTags) {
                 tagsToModify.clear();
             }
-            tagsToModify.addAll(tagList);
+            tagsToModify.addAll(tagList); // TODO add/update tag index if enabled!
             tagsToModify.save();
             if (! fireProgressUpdate(currentStep, candidate.getName())) {
                 wasCanceled = true;

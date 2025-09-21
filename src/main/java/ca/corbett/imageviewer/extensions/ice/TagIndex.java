@@ -145,7 +145,7 @@ public class TagIndex {
         //    log.info("IceExtension: tag index is disabled. You can enable it in application settings for increased search performance.");
         //    return;
         //}
-        
+
         if (! indexFile.exists()) {
             log.info("IceExtension: tag index file not found.");
             return;

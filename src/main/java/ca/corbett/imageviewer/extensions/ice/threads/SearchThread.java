@@ -80,7 +80,7 @@ public class SearchThread extends MultiProgressWorker {
                 }
 
                 else {
-                    TagList tagList = TagList.fromFile(candidateFile);
+                    TagList tagList = TagList.fromFile(candidateFile); // TODO add to index if enabled!
                     isMatch = switch (searchMode) {
                         case CONTAINS_ALL -> tagList.containsAll(searchTags);
                         case CONTAINS_ANY -> tagList.containsAny(searchTags);

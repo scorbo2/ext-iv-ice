@@ -51,7 +51,7 @@ public class TagDialog extends JDialog {
         button.addActionListener(e -> {
             TagList newList = TagList.of(textField.getText());
             newList.setPersistenceFile(tagList.getPersistenceFile());
-            newList.addAll(tagList.getTags());
+            newList.addAll(tagList.getTags()); // TODO add to tag index if enabled!
             tagList = newList;
             tagList.save();
             dispose();
