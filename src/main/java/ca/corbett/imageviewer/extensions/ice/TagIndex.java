@@ -61,7 +61,11 @@ public class TagIndex {
      * TODO this should return a worker thread instead of just doing the scan... list might be huge... HUUUGE
      */
     public void scan(File dir, boolean isRecursive) {
-        log.info("IceExtension: scanning "+dir.getAbsolutePath());
+        if (! isEnabled()) {
+            log.info("IceExtension: skipping tag scan because tag index is disabled. You can enable it in application settings.");
+            return;
+        }
+        log.info("IceExtension: scanning "+dir.getAbsolutePath() + (isRecursive?" recursively":""));
         int entriesCreated = 0;
         int entriesUpdated = 0;
         int entriesSkippedBecauseUpToDate = 0;
@@ -116,6 +120,10 @@ public class TagIndex {
     }
 
     public void load() {
+        if (! isEnabled()) {
+            log.info("IceExtension: tag index is disabled. You can enable it in application settings for increased search performance.");
+            return;
+        }
         if (! indexFile.exists()) {
             log.info("IceExtension: tag index file not found.");
             return;
@@ -138,6 +146,10 @@ public class TagIndex {
     }
 
     public void save() {
+        if (! isEnabled()) {
+            return;
+        }
+
         // Sort the entries by image file path:
         List<TagIndexEntry> sortedList = indexEntries.entrySet().stream()
                                               .sorted(Map.Entry.comparingByKey())

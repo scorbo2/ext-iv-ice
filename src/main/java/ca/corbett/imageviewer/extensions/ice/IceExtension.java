@@ -123,11 +123,14 @@ public class IceExtension extends ImageViewerExtension {
             JMenuItem tagMultiImagesItem = new JMenuItem(new TagMultipleImagesAction("Tag images..."));
             iceMenu.add(tagMultiImagesItem);
 
-            JMenuItem scanDirItem = new JMenuItem(new ScanDirAction("Tag scan: current directory", false));
-            iceMenu.add(scanDirItem);
+            if (TagIndex.isEnabled()) {
+                JMenuItem scanDirItem = new JMenuItem(new ScanDirAction("Tag scan: current directory", false));
+                iceMenu.add(scanDirItem);
 
-            JMenuItem scanDirItemRecursive = new JMenuItem(new ScanDirAction("Tag scan: current directory recursively", true));
-            iceMenu.add(scanDirItemRecursive);
+                JMenuItem scanDirItemRecursive = new JMenuItem(
+                        new ScanDirAction("Tag scan: current directory recursively", true));
+                iceMenu.add(scanDirItemRecursive);
+            }
         }
 
         // TODO rebuild/refresh search index
