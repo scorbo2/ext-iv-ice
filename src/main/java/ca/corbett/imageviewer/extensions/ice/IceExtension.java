@@ -133,8 +133,6 @@ public class IceExtension extends ImageViewerExtension {
             }
         }
 
-        // TODO rebuild/refresh search index
-
         return List.of(iceMenu);
     }
 

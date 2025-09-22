@@ -2,6 +2,7 @@ package ca.corbett.imageviewer.extensions.ice.threads;
 
 import ca.corbett.extras.io.FileSystemUtil;
 import ca.corbett.extras.progress.SimpleProgressWorker;
+import ca.corbett.imageviewer.extensions.ice.TagIndex;
 import ca.corbett.imageviewer.extensions.ice.TagList;
 import ca.corbett.imageviewer.ui.ThumbContainerPanel;
 import org.apache.commons.io.FilenameUtils;
@@ -36,14 +37,15 @@ public class BatchTagThread extends SimpleProgressWorker {
         List<File> imageFiles = FileSystemUtil.findFiles(startDir, isRecursive, ThumbContainerPanel.getImageExtensions());
         fireProgressBegins(imageFiles.size());
         int currentStep = 1;
-        for (File candidate : imageFiles) {
-            TagList tagsToModify = TagList.fromFile(new File(candidate.getParentFile(), FilenameUtils.getBaseName(candidate.getName())+".ice"));
+        for (File imageFile : imageFiles) {
+            TagList tagsToModify = TagList.fromFile(new File(imageFile.getParentFile(), FilenameUtils.getBaseName(imageFile.getName())+".ice"));
             if (isReplaceTags) {
                 tagsToModify.clear();
             }
-            tagsToModify.addAll(tagList); // TODO add/update tag index if enabled!
+            tagsToModify.addAll(tagList);
             tagsToModify.save();
-            if (! fireProgressUpdate(currentStep, candidate.getName())) {
+            TagIndex.getInstance().addOrUpdateEntry(imageFile, tagsToModify.getPersistenceFile());
+            if (! fireProgressUpdate(currentStep, imageFile.getName())) {
                 wasCanceled = true;
                 break;
             }

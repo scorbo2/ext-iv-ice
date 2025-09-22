@@ -12,17 +12,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 /**
- * TODO If enabled, we'll manage an index file storing all known tags for all known images, along
+ * If enabled, we'll manage an index file storing all known tags for all known images, along
  * with a lastModified timestamp for the tag file to very quickly determine if reload is needed.
  * SearchThread will be updated to use TagIndex if its enabled.
- *
- * TODO wait, how does the search know if a directory has been indexed
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
@@ -31,6 +27,16 @@ public class TagIndex {
     private static final Logger log = Logger.getLogger(TagIndex.class.getName());
 
     public static final String PROP_NAME = "ICE.General.enableTagIndex";
+
+    /**
+     * Possible return codes for addOrUpdate() method.
+     */
+    public enum EntryAddResult {
+        ExistingEntryUpdated,
+        NewEntryCreated,
+        SkippedBecauseUpToDate,
+        SkippedBecauseDisabled
+    }
 
     private static TagIndex instance;
     private final File indexFile;
@@ -52,8 +58,48 @@ public class TagIndex {
         return ((BooleanProperty)AppConfig.getInstance().getPropertiesManager().getProperty(PROP_NAME)).getValue();
     }
 
-    // TODO add entry: needs tag file, image file, and tag list
     // TODO search entries: needs tags to search for and search mode
+    // TODO wire up image operations so when stuff gets moved/deleted/renamed our index is notified
+
+    public EntryAddResult addOrUpdateEntry(File imageFile, File tagFile) {
+        // If disabled by configuration, just do nothing:
+        if (! isEnabled()) {
+            return EntryAddResult.SkippedBecauseDisabled;
+        }
+
+        // Is there an existing entry for this image?
+        TagIndexEntry existingEntry = indexEntries.get(imageFile.getAbsolutePath());
+        if (existingEntry != null) {
+            // And has the tag file changed since we last saw it?
+            if (existingEntry.getTagFileLastModified() != tagFile.lastModified() ||
+                    existingEntry.getTagFileSize() != tagFile.length()) {
+                existingEntry.setTagFileLastModified(tagFile.lastModified());
+                existingEntry.setTagFileSize(tagFile.length());
+                existingEntry.setTagList(TagList.fromFile(tagFile));
+                return EntryAddResult.ExistingEntryUpdated;
+            }
+            else {
+                return EntryAddResult.SkippedBecauseUpToDate;
+            }
+        }
+
+        // Otherwise, make an entry for this guy:
+        TagIndexEntry newEntry = new TagIndexEntry();
+        newEntry.setImageFile(imageFile);
+        newEntry.setTagFile(tagFile);
+        newEntry.setTagFileLastModified(tagFile.lastModified());
+        newEntry.setTagFileSize(tagFile.length());
+        newEntry.setTagList(TagList.fromFile(tagFile));
+        indexEntries.put(imageFile.getAbsolutePath(), newEntry);
+        return EntryAddResult.NewEntryCreated;
+    }
+
+    /**
+     * Removes the index entry for the given image file, if there is one.
+     */
+    public void removeEntry(File imageFile) {
+        indexEntries.remove(imageFile.getAbsolutePath());
+    }
 
     public boolean isIndexed(File imageFile) {
         return indexEntries.containsKey(imageFile.getAbsolutePath());
@@ -95,32 +141,11 @@ public class TagIndex {
                 continue;
             }
 
-            // Is there an existing entry for this image?
-            TagIndexEntry existingEntry = indexEntries.get(imageFile.getAbsolutePath());
-            if (existingEntry != null) {
-                // And has the tag file changed since we last saw it?
-                if (existingEntry.getTagFileLastModified() != tagFile.lastModified() ||
-                    existingEntry.getTagFileSize() != tagFile.length()) {
-                    existingEntry.setTagFileLastModified(tagFile.lastModified());
-                    existingEntry.setTagFileSize(tagFile.length());
-                    existingEntry.setTagList(TagList.fromFile(tagFile));
-                    entriesUpdated++;
-                }
-                else {
-                    entriesSkippedBecauseUpToDate++;
-                }
-            }
-
-            // Otherwise, make an entry for this guy:
-            else {
-                TagIndexEntry newEntry = new TagIndexEntry();
-                newEntry.setImageFile(imageFile);
-                newEntry.setTagFile(tagFile);
-                newEntry.setTagFileLastModified(tagFile.lastModified());
-                newEntry.setTagFileSize(tagFile.length());
-                newEntry.setTagList(TagList.fromFile(tagFile));
-                indexEntries.put(imageFile.getAbsolutePath(), newEntry);
-                entriesCreated++;
+            switch (addOrUpdateEntry(imageFile, tagFile)) {
+                case ExistingEntryUpdated: entriesUpdated++; break;
+                case NewEntryCreated: entriesCreated++; break;
+                case SkippedBecauseUpToDate: entriesSkippedBecauseUpToDate++; break;
+                case SkippedBecauseDisabled: break; // irrelevant as we check isEnabled() above
             }
         }
 

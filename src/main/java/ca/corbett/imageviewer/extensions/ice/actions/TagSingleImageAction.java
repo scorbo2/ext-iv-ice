@@ -28,6 +28,6 @@ public class TagSingleImageAction extends AbstractAction {
         // this will just show an empty dialog and if the user hits save, we'll create it.
         File file = new File(currentImage.getImageFile().getParentFile(),
                              FilenameUtils.getBaseName(currentImage.getImageFile().getName())+".ice");
-        new TagDialog("Image tags", TagList.fromFile(file)).setVisible(true); // TODO add to index if enabled!
+        new TagDialog("Image tags", TagList.fromFile(file)).setVisible(true);
     }
 }

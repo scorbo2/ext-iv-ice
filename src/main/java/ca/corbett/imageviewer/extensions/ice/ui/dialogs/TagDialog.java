@@ -4,6 +4,7 @@ import ca.corbett.forms.Alignment;
 import ca.corbett.forms.FormPanel;
 import ca.corbett.forms.Margins;
 import ca.corbett.forms.fields.LongTextField;
+import ca.corbett.imageviewer.extensions.ice.TagIndex;
 import ca.corbett.imageviewer.extensions.ice.TagList;
 import ca.corbett.imageviewer.ui.MainWindow;
 
@@ -14,19 +15,22 @@ import javax.swing.JPanel;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.io.File;
 
 public class TagDialog extends JDialog {
 
     private TagList tagList;
     private LongTextField textField;
+    private final File imageFile;
 
-    public TagDialog(String title, TagList tagList) {
+    public TagDialog(String title, File imageFile, TagList tagList) {
         super(MainWindow.getInstance(), title, true);
         setSize(new Dimension(500, 220));
         setResizable(false);
         setLocationRelativeTo(MainWindow.getInstance());
         setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         this.tagList = tagList;
+        this.imageFile = imageFile;
         setLayout(new BorderLayout());
         add(buildFormPanel(), BorderLayout.CENTER);
         add(buildButtonPanel(), BorderLayout.SOUTH);
@@ -51,9 +55,10 @@ public class TagDialog extends JDialog {
         button.addActionListener(e -> {
             TagList newList = TagList.of(textField.getText());
             newList.setPersistenceFile(tagList.getPersistenceFile());
-            newList.addAll(tagList.getTags()); // TODO add to tag index if enabled!
+            newList.addAll(tagList.getTags());
             tagList = newList;
             tagList.save();
+            TagIndex.getInstance().addOrUpdateEntry(imageFile, tagList.getPersistenceFile());
             dispose();
         });
         buttonPanel.add(button);

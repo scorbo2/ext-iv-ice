@@ -12,7 +12,9 @@ import java.util.List;
 import java.util.logging.Logger;
 
 /**
- * TODO search via index if available
+ * Searches through all tag files in a given directory with optional recursion, looking for any
+ * that match the specified tag list with the specified search mode. If the tag index is enabled
+ * in settings, it will be consulted to potentially greatly speed up the search.
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
@@ -79,8 +81,10 @@ public class SearchThread extends MultiProgressWorker {
                     indexHits++;
                 }
 
+                // If not found in the index or if index is disabled, build a new one:
                 else {
-                    TagList tagList = TagList.fromFile(candidateFile); // TODO add to index if enabled!
+                    TagList tagList = TagList.fromFile(candidateFile);
+                    TagIndex.getInstance().addOrUpdateEntry(imageFile, candidateFile);
                     isMatch = switch (searchMode) {
                         case CONTAINS_ALL -> tagList.containsAll(searchTags);
                         case CONTAINS_ANY -> tagList.containsAny(searchTags);
