@@ -58,9 +58,6 @@ public class TagIndex {
         return ((BooleanProperty)AppConfig.getInstance().getPropertiesManager().getProperty(PROP_NAME)).getValue();
     }
 
-    // TODO search entries: needs tags to search for and search mode
-    // TODO wire up image operations so when stuff gets moved/deleted/renamed our index is notified
-
     public EntryAddResult addOrUpdateEntry(File imageFile, File tagFile) {
         // If disabled by configuration, just do nothing:
         if (! isEnabled()) {

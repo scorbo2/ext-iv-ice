@@ -11,7 +11,9 @@ import java.io.File;
 import java.util.List;
 
 /**
- * TODO update search index if available
+ * Goes through a directory with optional recursion and applies the given tags to every image that it finds there.
+ * You can specify whether the new tags should replace any existing tags, or be added to them (with pruning
+ * of duplicate tags).
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
