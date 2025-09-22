@@ -274,7 +274,7 @@ public class IceExtension extends ImageViewerExtension {
 
             if (iceFile.exists()) {
                 JLabel iceLabel = createLabel("[ICE]");
-                CompanionFileMouseListener listener = new CompanionFileMouseListener(iceFile);
+                CompanionFileMouseListener listener = new CompanionFileMouseListener(srcFile, iceFile);
                 iceLabel.addMouseListener(listener);
                 thumbPanel.setExtraProperty("companionTextFileLabel", iceLabel);
                 thumbPanel.setExtraProperty("companionTextFileLabelListener", listener);

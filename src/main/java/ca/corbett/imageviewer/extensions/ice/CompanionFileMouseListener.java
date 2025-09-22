@@ -19,31 +19,34 @@ import java.util.logging.Logger;
 public class CompanionFileMouseListener extends MouseAdapter {
 
     private static final Logger logger = Logger.getLogger(CompanionFileMouseListener.class.getName());
-    private File file;
+    private File imageFile;
+    private File tagFile;
 
     /**
      * Creates a CompanionFileMouseListener that will link to the given File.
      * If the File is renamed or moved at runtime, you can call setFile() to
      * update this listener with the new value.
      *
-     * @param file The File which will be displayed when this listener gets a mouse event.
+     * @param imageFile the image to be tagged.
+     * @param tagFile The tag file which will be displayed when this listener gets a mouse event.
      */
-    public CompanionFileMouseListener(File file) {
-        this.file = file;
+    public CompanionFileMouseListener(File imageFile, File tagFile) {
+        this.imageFile = imageFile;
+        this.tagFile = tagFile;
     }
 
-    public File getFile() {
-        return file;
+    public File getTagFile() {
+        return tagFile;
     }
 
-    public void setFile(File file) {
-        this.file = file;
+    public void setTagFile(File tagFile) {
+        this.tagFile = tagFile;
     }
 
     @Override
     public void mouseClicked(MouseEvent e) {
         redispatchToParent(e);
-        showTagFile(file);
+        showTagFile(tagFile);
     }
 
     private void showTagFile(File file) {
@@ -55,7 +58,7 @@ public class CompanionFileMouseListener extends MouseAdapter {
             logger.log(Level.WARNING, "The specified file seems to no longer exist: {0}", file.getAbsolutePath());
             return;
         }
-        new TagDialog("Image tags", TagList.fromFile(file)).setVisible(true);
+        new TagDialog("Image tags", imageFile, TagList.fromFile(file)).setVisible(true);
     }
 
     private void redispatchToParent(MouseEvent e) {
