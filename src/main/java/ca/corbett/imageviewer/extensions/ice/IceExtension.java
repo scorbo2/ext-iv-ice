@@ -276,12 +276,57 @@ public class IceExtension extends ImageViewerExtension {
                 JLabel iceLabel = createLabel("[ICE]");
                 CompanionFileMouseListener listener = new CompanionFileMouseListener(srcFile, iceFile);
                 iceLabel.addMouseListener(listener);
-                thumbPanel.setExtraProperty("companionTextFileLabel", iceLabel);
-                thumbPanel.setExtraProperty("companionTextFileLabelListener", listener);
+                thumbPanel.setExtraProperty("companionIceFileLabel", iceLabel);
+                thumbPanel.setExtraProperty("companionIceFileLabelListener", listener);
                 wrapperPanel.add(iceLabel);
             }
 
             thumbPanel.add(wrapperPanel, BorderLayout.NORTH);
+        }
+    }
+
+    /**
+     * Invoked when the image that this thumb panel represents has been renamed. We respond
+     * to this by updating the hyperlink to point to the new companion file.
+     * Note that we don't move the companion files here! File operations are handled
+     * in preImageOperation() instead of here. This is the final step, invoked after the file
+     * has been renamed, and we just need to update the stale hyperlinks to point to the
+     * new files. This method does nothing if there is no companion file.
+     *
+     * @param thumbPanel The ThumbPanel in question.
+     * @param newFile    A File object representing the new name.
+     */
+    @Override
+    public void thumbPanelRenamed(ThumbPanel thumbPanel, File newFile) {
+        File tagFile = new File(newFile.getParentFile(), FilenameUtils.getBaseName(newFile.getName()) + ".ice");
+        CompanionFileMouseListener labelListener = (CompanionFileMouseListener)thumbPanel.getExtraProperty(
+                "companionIceFileLabelListener");
+        if (labelListener != null) {
+            labelListener.setTagFile(tagFile);
+        }
+    }
+
+    /**
+     * Invoked when a ThumbPanel is selected or deselected. We respond to that by changing
+     * colours as needed to indicate the selection state.
+     *
+     * @param thumbPanel The ThumbPanel in question
+     * @param isSelected true if this thumb panel is selected.
+     */
+    @Override
+    public void thumbPanelSelectionChanged(ThumbPanel thumbPanel, boolean isSelected) {
+        JLabel textFileLabel = (JLabel)thumbPanel.getExtraProperty("companionIceFileLabel");
+        if (textFileLabel != null) {
+            if (isSelected) {
+                textFileLabel.setForeground(LookAndFeelManager.getLafColor("textHighlightText", Color.BLUE));
+            }
+            else {
+                textFileLabel.setForeground(LookAndFeelManager.getLafColor("Component.linkColor", Color.BLUE));
+            }
+        }
+        JPanel wrapperPanel = (JPanel)thumbPanel.getExtraProperty("companionFileWrapperPanel");
+        if (wrapperPanel != null) {
+            wrapperPanel.setBackground(thumbPanel.getBackground());
         }
     }
 
