@@ -118,8 +118,7 @@ public class SearchDialog extends JDialog {
         MainWindow.getInstance().getImageSetManager().addImageSet(resultSet);
         dispose();
         MainWindow.getInstance().setBrowseMode(MainWindow.BrowseMode.IMAGE_SET, false);
-        MainWindow.getInstance().getImageSetPanel().resync();
-        MainWindow.getInstance().getImageSetPanel().selectAndScrollTo(resultSet);
+        MainWindow.getInstance().getImageSetPanel().resync(resultSet);
     }
 
     private FormPanel buildFormPanel() {
