@@ -8,6 +8,7 @@ import ca.corbett.extras.properties.BooleanProperty;
 import ca.corbett.extras.properties.ComboProperty;
 import ca.corbett.extras.properties.IntegerProperty;
 import ca.corbett.imageviewer.AppConfig;
+import ca.corbett.imageviewer.ImageOperation;
 import ca.corbett.imageviewer.extensions.ImageViewerExtension;
 import ca.corbett.imageviewer.extensions.ice.actions.ScanDirAction;
 import ca.corbett.imageviewer.extensions.ice.actions.TagMultipleImagesAction;
@@ -219,6 +220,34 @@ public class IceExtension extends ImageViewerExtension {
                     tagPanel.setTagList(TagList.fromFile(file));
                 }
             }
+        }
+    }
+
+    /**
+     * Overridden here so we can keep our tag index up to date as images are moved, renamed,
+     * deleted, copied, or symlinked. Note: this should be handled in postImageOperation, but
+     * there's <a href="https://github.com/scorbo2/imageviewer/issues/42">an issue</a> that needs addressed first.
+     */
+    @Override
+    public void preImageOperation(ImageOperation.Type opType, File srcFile, File destFile) {
+        switch (opType) {
+            case DELETE: TagIndex.getInstance().removeEntry(srcFile); break;
+
+            case MOVE:
+                TagIndex.getInstance().removeEntry(srcFile);
+                List<File> tagFiles = getCompanionFiles(destFile);
+                if (! tagFiles.isEmpty()) {
+                    TagIndex.getInstance().addOrUpdateEntry(destFile, tagFiles.get(0)); // there can be only 1
+                }
+                break;
+
+            case SYMLINK:
+            case COPY:
+                List<File> copiedTagFiles = getCompanionFiles(destFile);
+                if (! copiedTagFiles.isEmpty()) {
+                    TagIndex.getInstance().addOrUpdateEntry(destFile, copiedTagFiles.get(0)); // there can be only 1
+                }
+                break;
         }
     }
 
