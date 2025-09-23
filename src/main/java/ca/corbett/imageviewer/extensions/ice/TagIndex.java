@@ -1,9 +1,11 @@
 package ca.corbett.imageviewer.extensions.ice;
 
 import ca.corbett.extras.io.FileSystemUtil;
+import ca.corbett.extras.progress.MultiProgressWorker;
 import ca.corbett.extras.properties.BooleanProperty;
 import ca.corbett.imageviewer.AppConfig;
 import ca.corbett.imageviewer.Version;
+import ca.corbett.imageviewer.extensions.ice.threads.ScanThread;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
@@ -120,40 +122,9 @@ public class TagIndex {
     /**
      * Scans the given directory (with optional recursion) looking for any ice tag files,
      * and updates/inserts entries in our tag index in memory as needed.
-     * TODO this should return a worker thread instead of just doing the scan... list might be huge... HUUUGE
      */
-    public void scan(File dir, boolean isRecursive) {
-        if (! isEnabled()) {
-            log.info("IceExtension: skipping tag scan because tag index is disabled. You can enable it in application settings.");
-            return;
-        }
-        log.info("IceExtension: scanning "+dir.getAbsolutePath() + (isRecursive?" recursively":""));
-        int entriesCreated = 0;
-        int entriesUpdated = 0;
-        int entriesSkippedBecauseUpToDate = 0;
-        List<File> tagFiles = FileSystemUtil.findFiles(dir, isRecursive, "ice");
-        for (File tagFile : tagFiles) {
-            File imageFile = IceExtension.getMatchingImageFile(tagFile);
-            if (imageFile == null) {
-                continue;
-            }
-
-            switch (addOrUpdateEntry(imageFile, tagFile)) {
-                case ExistingEntryUpdated: entriesUpdated++; break;
-                case NewEntryCreated: entriesCreated++; break;
-                case SkippedBecauseUpToDate: entriesSkippedBecauseUpToDate++; break;
-                case SkippedBecauseDisabled: break; // irrelevant as we check isEnabled() above
-            }
-        }
-
-        log.info("IceExtension: tag scan complete. Entries added: " + entriesCreated
-                         + "; entries updated: " + entriesUpdated
-                         + "; entries skipped (unchanged): " + entriesSkippedBecauseUpToDate);
-
-        // Auto-save if anything was changed:
-        if (entriesCreated > 0 || entriesUpdated > 0) {
-            save();
-        }
+    public ScanThread scan(File dir, boolean isRecursive) {
+        return new ScanThread(dir, isRecursive);
     }
 
     public void clear() {

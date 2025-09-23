@@ -1,6 +1,8 @@
 package ca.corbett.imageviewer.extensions.ice.actions;
 
+import ca.corbett.extras.progress.MultiProgressDialog;
 import ca.corbett.imageviewer.extensions.ice.TagIndex;
+import ca.corbett.imageviewer.extensions.ice.threads.ScanThread;
 import ca.corbett.imageviewer.ui.MainWindow;
 
 import javax.swing.AbstractAction;
@@ -24,6 +26,7 @@ public class ScanDirAction extends AbstractAction {
             return;
         }
 
-        TagIndex.getInstance().scan(dir, isRecursive);
+        ScanThread scanThread = TagIndex.getInstance().scan(dir, isRecursive);
+        new MultiProgressDialog(MainWindow.getInstance(), "Tag scan").runWorker(scanThread, true);
     }
 }
