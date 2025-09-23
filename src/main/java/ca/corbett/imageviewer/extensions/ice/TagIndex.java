@@ -45,7 +45,7 @@ public class TagIndex {
     private final Map<String, TagIndexEntry> indexEntries;
 
     protected TagIndex() {
-        indexFile = new File(Version.SETTINGS_DIR, "tagIndex.ice"); // todo configurable?
+        indexFile = new File(Version.SETTINGS_DIR, "tagIndex.ice");
         indexEntries = new HashMap<>();
     }
 
