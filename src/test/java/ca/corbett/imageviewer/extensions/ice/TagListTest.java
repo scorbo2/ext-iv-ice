@@ -152,4 +152,32 @@ class TagListTest {
             assertTrue(list.hasTag("hello"));
         }
     }
+
+    @Test
+    public void replace_withNoMatch_shouldDoNothing() {
+        // GIVEN a tag with no text to be replaced:
+        TagList tagList = TagList.of("hello,there,donkey");
+
+        // WHEN we try to replace with a token that is not present:
+        tagList.replace("((non-existing-tag))", "someNewValue");
+
+        // THEN nothing should have happened:
+        assertEquals(3, tagList.size());
+        assertTrue(tagList.hasTag("hello"));
+        assertTrue(tagList.hasTag("there"));
+        assertTrue(tagList.hasTag("donkey"));
+        assertFalse(tagList.hasTag("someNewValue"));
+    }
+
+    @Test
+    public void replace_withMatch_shouldReplace() {
+        // GIVEN a tag with a token to be replaced:
+        TagList tagList = TagList.of("hello,((replaceme)),there");
+
+        // WHEN we do a token replacement:
+        tagList.replace("((replaceme))", "done!");
+
+        // THEN we should see the replacement worked:
+        assertEquals("hello, there, done!", tagList.toString());
+    }
 }

@@ -6,7 +6,9 @@ import ca.corbett.forms.Alignment;
 import ca.corbett.forms.FormPanel;
 import ca.corbett.forms.Margins;
 import ca.corbett.forms.fields.ComboField;
+import ca.corbett.forms.fields.LabelField;
 import ca.corbett.forms.fields.LongTextField;
+import ca.corbett.forms.fields.PanelField;
 import ca.corbett.imageviewer.extensions.ice.TagList;
 import ca.corbett.imageviewer.extensions.ice.threads.BatchTagThread;
 import ca.corbett.imageviewer.ui.MainWindow;
@@ -45,7 +47,7 @@ public class TagImagesDialog extends JDialog {
 
     public TagImagesDialog(String title, File startDir) {
         super(MainWindow.getInstance(), title, true);
-        setSize(new Dimension(600, 320));
+        setSize(new Dimension(680, 550));
         setResizable(false);
         this.startDir = startDir;
         setLocationRelativeTo(MainWindow.getInstance());
@@ -78,7 +80,7 @@ public class TagImagesDialog extends JDialog {
 
     private JPanel buildFormPanel() {
         formPanel = new FormPanel(Alignment.TOP_CENTER);
-        formPanel.setBorderMargin(0);
+        formPanel.setBorderMargin(10);
 
         recursiveField = new ComboField<>("Batch type:", List.of(recurseOptions), 0);
         formPanel.add(recursiveField);
@@ -91,6 +93,20 @@ public class TagImagesDialog extends JDialog {
         textField.setHelpText("<html>Enter tags as a comma-separated list.<br>Whitespace is ignored between tags.<br>Redundant tags are ignored.</html>");
         textField.setAllowBlank(false);
         formPanel.add(textField);
+
+        PanelField panelField = new PanelField(new BorderLayout());
+        FormPanel labelPanel = new FormPanel(Alignment.TOP_LEFT);
+        labelPanel.add(LabelField.createBoldHeaderLabel("Substitution tokens", 14).setMargins(new Margins(10,32,10,2,0)));
+        labelPanel.add(LabelField.createPlainHeaderLabel("You can use the following tokens to create tags dynamically:", 12).setMargins(new Margins(10,4,10,6,0)));
+        labelPanel.add(new LabelField("<html><b>$(imageDirName)</b></html>:", "The name of the containing directory").setMargins(new Margins(38,4,4,2,8)));
+        labelPanel.add(new LabelField("<html><b>$(imageDirPath)</b></html>:", "The full path of the containing directory").setMargins(new Margins(38,2,4,2,8)));
+        labelPanel.add(new LabelField("<html><b>$(parentDirName)</b></html>:", "The name of the containing directory's parent directory").setMargins(new Margins(38,2,4,2,8)));
+        labelPanel.add(new LabelField("<html><b>$(parentDirPath)</b></html>:", "The full path of the containing directory's parent directory").setMargins(new Margins(38,2,4,2,8)));
+        labelPanel.add(new LabelField("<html><b>$(aspectRatio)</b></html>:", "A fixed value of \"landscape\", \"portrait\", or \"square\"").setMargins(new Margins(38,2,4,4,8)));
+        labelPanel.add(LabelField.createPlainHeaderLabel("Note: using $(aspectRatio) may significantly slow down the operation.", 12).setMargins(new Margins(10,4,10,6,0)));
+        panelField.getPanel().add(labelPanel, BorderLayout.CENTER);
+        panelField.setShouldExpand(true);
+        formPanel.add(panelField);
 
         return formPanel;
     }

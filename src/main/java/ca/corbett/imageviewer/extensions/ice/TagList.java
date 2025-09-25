@@ -72,6 +72,22 @@ public class TagList {
         tags.clear();
     }
 
+    public void replace(String oldValue, String newValue) {
+        // Do nothing if value to be replaced is not here:
+        String old = stripTag(oldValue);
+        if (! tags.contains(old)) {
+            return;
+        }
+
+        // Out with the old and in with the new:
+        tags.remove(old);
+        tags.add(stripTag(newValue));
+    }
+
+    public void remove(String tag) {
+        tags.remove(stripTag(tag));
+    }
+
     public boolean containsAll(TagList other) {
         return tags.containsAll(other.tags);
     }
