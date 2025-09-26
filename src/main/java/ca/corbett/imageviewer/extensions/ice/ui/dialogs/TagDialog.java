@@ -59,6 +59,7 @@ public class TagDialog extends JDialog {
             tagList = newList;
             tagList.save();
             TagIndex.getInstance().addOrUpdateEntry(imageFile, tagList.getPersistenceFile());
+            MainWindow.getInstance().reloadCurrentImage();
             dispose();
         });
         buttonPanel.add(button);
