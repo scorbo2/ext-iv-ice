@@ -1,6 +1,5 @@
 package ca.corbett.imageviewer.extensions.ice.threads;
 
-import ca.corbett.extras.image.ImageUtil;
 import ca.corbett.extras.io.FileSystemUtil;
 import ca.corbett.extras.progress.SimpleProgressWorker;
 import ca.corbett.imageviewer.extensions.ice.TagIndex;
@@ -8,9 +7,13 @@ import ca.corbett.imageviewer.extensions.ice.TagList;
 import ca.corbett.imageviewer.ui.ThumbContainerPanel;
 import org.apache.commons.io.FilenameUtils;
 
-import java.awt.image.BufferedImage;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
+import java.awt.Dimension;
 import java.io.File;
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -50,6 +53,9 @@ public class BatchTagThread extends SimpleProgressWorker {
     private final boolean isRecursive;
     private final boolean isReplaceTags;
     private final TagList tagList;
+    private int totalProcessed;
+    private int countCreated;
+    private int countUpdated;
     private boolean wasCanceled;
 
     public BatchTagThread(File dir, boolean isRecursive, boolean isReplaceTags, TagList tagList) {
@@ -63,18 +69,29 @@ public class BatchTagThread extends SimpleProgressWorker {
     @Override
     public void run() {
         wasCanceled = false;
+        totalProcessed = 0;
+        countCreated = 0;
+        countUpdated = 0;
         List<File> imageFiles = FileSystemUtil.findFiles(startDir, isRecursive, ThumbContainerPanel.getImageExtensions());
         fireProgressBegins(imageFiles.size());
         int currentStep = 1;
         for (File imageFile : imageFiles) {
-            TagList tagsToModify = TagList.fromFile(new File(imageFile.getParentFile(), FilenameUtils.getBaseName(imageFile.getName())+".ice"));
+            File tagFile = new File(imageFile.getParentFile(), FilenameUtils.getBaseName(imageFile.getName())+".ice");
+            if (tagFile.exists()) {
+                countUpdated++;
+            }
+            else {
+                countCreated++;
+            }
+            TagList tagsToModify = TagList.fromFile(tagFile);
             if (isReplaceTags) {
                 tagsToModify.clear();
             }
             tagsToModify.addAll(tagList);
             handleTokenReplacements(tagsToModify, imageFile);
             tagsToModify.save();
-            TagIndex.getInstance().addOrUpdateEntry(imageFile, tagsToModify.getPersistenceFile());
+            TagIndex.getInstance().addOrUpdateEntry(imageFile, tagFile);
+            totalProcessed++;
             if (! fireProgressUpdate(currentStep, imageFile.getName())) {
                 wasCanceled = true;
                 break;
@@ -89,48 +106,71 @@ public class BatchTagThread extends SimpleProgressWorker {
         }
     }
 
+    public int getTotalProcessed() {
+        return totalProcessed;
+    }
+
+    public int getCountCreated() {
+        return countCreated;
+    }
+
+    public int getCountUpdated() {
+        return countUpdated;
+    }
+
     protected void handleTokenReplacements(TagList tagList, File imageFile) {
-        log.info("handleTokenReplacements for "+imageFile.getName());
         if (tagList.hasTag(IMAGE_DIR_NAME_TOKEN)) {
-            log.info("bingo 1!");
             tagList.replace(IMAGE_DIR_NAME_TOKEN, imageFile.getParentFile().getName());
         }
         if (tagList.hasTag(IMAGE_DIR_PATH_TOKEN)) {
-            log.info("bingo 2!");
             tagList.replace(IMAGE_DIR_PATH_TOKEN, imageFile.getParent());
         }
         if (tagList.hasTag(PARENT_DIR_NAME_TOKEN)) {
-            log.info("bingo 3!");
             tagList.replace(PARENT_DIR_NAME_TOKEN, imageFile.getParentFile().getParentFile().getName());
         }
         if (tagList.hasTag(PARENT_DIR_PATH_TOKEN)) {
-            log.info("bingo 4!");
             tagList.replace(PARENT_DIR_PATH_TOKEN, imageFile.getParentFile().getParent());
         }
         if (tagList.hasTag(ASPECT_RATIO_TOKEN)) {
-            log.info("bingo 5!");
-            BufferedImage image = null;
             try {
-                image = ImageUtil.loadImage(imageFile);
-                tagList.replace(ASPECT_RATIO_TOKEN, getAspectRatioDescription(image));
+                tagList.replace(ASPECT_RATIO_TOKEN, getAspectRatioDescription(getImageDimensions(imageFile)));
             }
             catch (IOException ioe) {
                 log.log(Level.SEVERE, "BatchTagThread: Caught exception while tagging images: "+ioe.getMessage(), ioe);
                 tagList.remove(ASPECT_RATIO_TOKEN); // just remove it
             }
-            finally {
-                if (image != null) {
-                    image.flush();
-                    image = null;
-                }
+        }
+    }
+
+    /**
+     * Reads image dimensions without loading the full image into memory
+     * Parking this here until <a href="https://github.com/scorbo2/swing-extras/issues/129">swing-extras 129</a>
+     * is addressed - this should be in ImageUtil.
+     */
+    public static Dimension getImageDimensions(File imageFile) throws IOException {
+        try (ImageInputStream stream = ImageIO.createImageInputStream(imageFile)) {
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(stream);
+
+            if (!readers.hasNext()) {
+                throw new IOException("No ImageReader found for the image format");
+            }
+
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(stream);
+                int width = reader.getWidth(0);  // 0 = first image
+                int height = reader.getHeight(0);
+                return new Dimension(width, height);
+            } finally {
+                reader.dispose();
             }
         }
     }
 
-    private String getAspectRatioDescription(BufferedImage image) {
+    private String getAspectRatioDescription(Dimension imageDim) {
         final double TOLERANCE = 0.05; // five percent is "close enough"
-        int width = image.getWidth();
-        int height = image.getHeight();
+        int width = imageDim.width;
+        int height = imageDim.height;
 
         // Calculate the ratio of the smaller dimension to the larger dimension
         double ratio = (double) Math.min(width, height) / Math.max(width, height);

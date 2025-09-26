@@ -47,7 +47,7 @@ public class TagImagesDialog extends JDialog {
 
     public TagImagesDialog(String title, File startDir) {
         super(MainWindow.getInstance(), title, true);
-        setSize(new Dimension(680, 550));
+        setSize(new Dimension(680, 530));
         setResizable(false);
         this.startDir = startDir;
         setLocationRelativeTo(MainWindow.getInstance());
@@ -73,6 +73,12 @@ public class TagImagesDialog extends JDialog {
             public void progressComplete() {
                 dispose();
                 MainWindow.getInstance().reloadCurrentImage();
+                int countCreated = thread.getCountCreated();
+                int countUpdated = thread.getCountUpdated();
+                MainWindow.getInstance().showMessageDialog(
+                        "Tag batch complete",
+                             "Tagging complete: "+thread.getTotalProcessed()+" images processed " +
+                        "(" + countCreated + " new tag files created, "+countUpdated+" updated).");
             }
         });
         dialog.runWorker(thread, true);
@@ -103,7 +109,6 @@ public class TagImagesDialog extends JDialog {
         labelPanel.add(new LabelField("<html><b>$(parentDirName)</b></html>:", "The name of the containing directory's parent directory").setMargins(new Margins(38,2,4,2,8)));
         labelPanel.add(new LabelField("<html><b>$(parentDirPath)</b></html>:", "The full path of the containing directory's parent directory").setMargins(new Margins(38,2,4,2,8)));
         labelPanel.add(new LabelField("<html><b>$(aspectRatio)</b></html>:", "A fixed value of \"landscape\", \"portrait\", or \"square\"").setMargins(new Margins(38,2,4,4,8)));
-        labelPanel.add(LabelField.createPlainHeaderLabel("Note: using $(aspectRatio) may significantly slow down the operation.", 12).setMargins(new Margins(10,4,10,6,0)));
         panelField.getPanel().add(labelPanel, BorderLayout.CENTER);
         panelField.setShouldExpand(true);
         formPanel.add(panelField);
