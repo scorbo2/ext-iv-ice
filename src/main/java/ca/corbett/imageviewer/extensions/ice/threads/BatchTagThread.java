@@ -92,7 +92,7 @@ public class BatchTagThread extends SimpleProgressWorker {
             tagsToModify.save();
             TagIndex.getInstance().addOrUpdateEntry(imageFile, tagFile);
             totalProcessed++;
-            if (! fireProgressUpdate(currentStep, imageFile.getName())) {
+            if (! fireProgressUpdate(currentStep++, imageFile.getName())) {
                 wasCanceled = true;
                 break;
             }
