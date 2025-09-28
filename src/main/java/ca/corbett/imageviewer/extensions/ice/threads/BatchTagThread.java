@@ -5,6 +5,7 @@ import ca.corbett.extras.progress.SimpleProgressWorker;
 import ca.corbett.imageviewer.extensions.ice.TagIndex;
 import ca.corbett.imageviewer.extensions.ice.TagList;
 import ca.corbett.imageviewer.ui.ThumbContainerPanel;
+import ca.corbett.imageviewer.ui.imagesets.ImageSet;
 import org.apache.commons.io.FilenameUtils;
 
 import javax.imageio.ImageIO;
@@ -13,6 +14,7 @@ import javax.imageio.stream.ImageInputStream;
 import java.awt.Dimension;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -80,8 +82,11 @@ public class BatchTagThread extends SimpleProgressWorker {
     public static final String PARENT_DIR_NAME_TOKEN = "$(parentDirName)";
     public static final String PARENT_DIR_PATH_TOKEN = "$(parentDirPath)";
     public static final String ASPECT_RATIO_TOKEN = "$(aspectRatio)";
+    public static final String IMAGE_SET_NAME_TOKEN = "$(imageSetName)";
+    public static final String IMAGE_SET_PATH_TOKEN = "$(imageSetPath)";
 
     private final File startDir;
+    private final ImageSet imageSet;
     private final boolean isRecursive;
     private final TaggingOperation tagOp;
     private final TagList tagList;
@@ -92,19 +97,50 @@ public class BatchTagThread extends SimpleProgressWorker {
 
     public BatchTagThread(File dir, boolean isRecursive, TaggingOperation tagOp, TagList tagList) {
         this.startDir = dir;
+        this.imageSet = null;
         this.isRecursive = isRecursive;
         this.tagOp = tagOp;
         this.tagList = tagList;
         this.wasCanceled = false;
     }
 
+    public BatchTagThread(ImageSet set, TaggingOperation tagOp, TagList tagList) {
+        this.startDir = null;
+        this.isRecursive = false;
+        this.imageSet = set;
+        this.tagList = tagList;
+        this.tagOp = tagOp;
+        this.wasCanceled = false;
+    }
+
     @Override
     public void run() {
+        log.info("Batch tag thread starting up...");
         wasCanceled = false;
         totalProcessed = 0;
         countCreated = 0;
         countUpdated = 0;
-        List<File> imageFiles = FileSystemUtil.findFiles(startDir, isRecursive, ThumbContainerPanel.getImageExtensions());
+
+        // We collect our list of files to operate on either by scanning our startDir, if we were
+        // supplied with one, or by interrogating our imageSet, if we were given one.
+        List<File> imageFiles;
+        if (startDir != null) {
+            imageFiles = FileSystemUtil.findFiles(startDir, isRecursive, ThumbContainerPanel.getImageExtensions());
+        }
+        else if (imageSet != null) {
+            List<String> imagePaths = imageSet.getImageFilePaths();
+            imageFiles = new ArrayList<>(imagePaths.size());
+            for (String path : imagePaths) {
+                imageFiles.add(new File(path));
+            }
+        }
+        else {
+            log.severe("BatchTagThread: either a starting directory or an image set must be supplied!");
+            fireProgressCanceled();
+            return;
+        }
+        log.info("Batch tag thread has "+imageFiles.size() + " files to process.");
+
         fireProgressBegins(imageFiles.size());
         int currentStep = 1;
         for (File imageFile : imageFiles) {
@@ -151,9 +187,11 @@ public class BatchTagThread extends SimpleProgressWorker {
         }
 
         if (wasCanceled) {
+            log.info("Batch tag thread - stopping due to thread cancellation.");
             fireProgressCanceled();
         }
         else {
+            log.info("Batch tag thread complete.");
             fireProgressComplete();
         }
     }
@@ -191,6 +229,12 @@ public class BatchTagThread extends SimpleProgressWorker {
                 log.log(Level.SEVERE, "BatchTagThread: Caught exception while tagging images: "+ioe.getMessage(), ioe);
                 tagList.remove(ASPECT_RATIO_TOKEN); // just remove it
             }
+        }
+        if (tagList.hasTag(IMAGE_SET_NAME_TOKEN) && imageSet != null) {
+            tagList.replace(IMAGE_SET_NAME_TOKEN, imageSet.getName());
+        }
+        if (tagList.hasTag(IMAGE_SET_PATH_TOKEN) && imageSet != null) {
+            tagList.replace(IMAGE_SET_PATH_TOKEN, imageSet.getFullyQualifiedName());
         }
     }
 

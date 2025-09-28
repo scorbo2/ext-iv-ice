@@ -46,22 +46,25 @@ public class TagImagesDialog extends JDialog {
 
     private static final Logger log = Logger.getLogger(TagImagesDialog.class.getName());
 
-    private static final String[] recurseOptions = {
+    private static final String[] recurseOptionsFileSystem = {
             "Tag all images in this directory",
             "Tag all images in this directory recursively"
     };
+    private static final String[] recurseOptionsImageSet = {
+            "Tag all images in this image set"
+    };
 
+    private final MainWindow.BrowseMode browseMode;
     private FormPanel formPanel;
-    private final File startDir;
     private ComboField<String> recursiveField;
     private ComboField<String> tagReplaceField;
     private LongTextField textField;
 
-    public TagImagesDialog(String title, File startDir) {
+    public TagImagesDialog(String title) {
         super(MainWindow.getInstance(), title, true);
+        this.browseMode = MainWindow.getInstance().getBrowseMode();
         setSize(new Dimension(680, 530));
         setResizable(false);
-        this.startDir = startDir;
         setLocationRelativeTo(MainWindow.getInstance());
         setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         setLayout(new BorderLayout());
@@ -71,14 +74,24 @@ public class TagImagesDialog extends JDialog {
 
     private void applyTags() {
         MultiProgressDialog dialog = new MultiProgressDialog(this, "Tag images");
-        final BatchTagThread thread = new BatchTagThread(startDir,
-                                                         recursiveField.getSelectedIndex() == 1,
-                                                         getTagOp(),
-                                                         TagList.of(textField.getText()));
+        BatchTagThread thread;
+
+        // The action that spawns this dialog checks that either current directory or current image set is not null.
+        if (browseMode == MainWindow.BrowseMode.FILE_SYSTEM) {
+            thread = new BatchTagThread(MainWindow.getInstance().getCurrentDirectory(),
+                                          recursiveField.getSelectedIndex() == 1,
+                                          getTagOp(),
+                                          TagList.of(textField.getText()));
+        }
+        else {
+            thread = new BatchTagThread(MainWindow.getInstance().getImageSetPanel().getSelectedImageSet().get(),
+                                        getTagOp(), TagList.of(textField.getText()));
+        }
+
         thread.addProgressListener(new SimpleProgressAdapter() {
             @Override
             public void progressCanceled() {
-                log.info("Batch tagging operation was canceled by user.");
+                log.info("Batch tagging operation was canceled.");
             }
 
             @Override
@@ -118,7 +131,8 @@ public class TagImagesDialog extends JDialog {
         formPanel = new FormPanel(Alignment.TOP_CENTER);
         formPanel.setBorderMargin(10);
 
-        recursiveField = new ComboField<>("Batch type:", List.of(recurseOptions), 0);
+        recursiveField = new ComboField<>("Batch type:", browseMode == MainWindow.BrowseMode.FILE_SYSTEM
+                ? List.of(recurseOptionsFileSystem) : List.of(recurseOptionsImageSet), 0);
         formPanel.add(recursiveField);
 
         tagReplaceField = new ComboField<>("Action type:", TaggingOperation.getLabels(), 0);
@@ -135,13 +149,24 @@ public class TagImagesDialog extends JDialog {
         labelPanel.add(LabelField.createBoldHeaderLabel("Substitution tokens", 14).setMargins(new Margins(10,32,10,2,0)));
         labelPanel.add(LabelField.createPlainHeaderLabel("You can use the following tokens to create tags dynamically:", 12).setMargins(new Margins(10,4,10,6,0)));
 
-        String[][] labelStrings = {
-                {"<html><b>$(imageDirName)</b></html>:", "The name of the containing directory", "$(imageDirName)"},
-                {"<html><b>$(imageDirPath)</b></html>:", "The full path of the containing directory", "$(imageDirPath)"},
-                {"<html><b>$(parentDirName)</b></html>:", "The name of the containing directory's parent directory", "$(parentDirName)"},
-                {"<html><b>$(parentDirPath)</b></html>:", "The full path of the containing directory's parent directory", "$(parentDirPath)"},
-                {"<html><b>$(aspectRatio)</b></html>:", "A fixed value of \"landscape\", \"portrait\", or \"square\"", "$(aspectRatio)"}
-        };
+        String[][] labelStrings;
+
+        if (browseMode == MainWindow.BrowseMode.FILE_SYSTEM) {
+            labelStrings = new String[][]{
+                    {"<html><b>$(imageDirName)</b></html>:", "The name of the containing directory", "$(imageDirName)"},
+                    {"<html><b>$(imageDirPath)</b></html>:", "The full path of the containing directory", "$(imageDirPath)"},
+                    {"<html><b>$(parentDirName)</b></html>:", "The name of the containing directory's parent directory", "$(parentDirName)"},
+                    {"<html><b>$(parentDirPath)</b></html>:", "The full path of the containing directory's parent directory", "$(parentDirPath)"},
+                    {"<html><b>$(aspectRatio)</b></html>:", "A fixed value of \"landscape\", \"portrait\", or \"square\"", "$(aspectRatio)"}
+            };
+        }
+        else {
+            labelStrings = new String[][] {
+                    {"<html><b>$(imageSetName)</b></html>:", "The name of this image set", "$(imageSetName)"},
+                    {"<html><b>$(imageSetPath)</b></html>:", "The fully qualified path of this image set", "$(imageSetPath)"},
+                    {"<html><b>$(aspectRatio)</b></html>:", "A fixed value of \"landscape\", \"portrait\", or \"square\"", "$(aspectRatio)"}
+            };
+        }
 
         for (String[] labelString : labelStrings) {
             LabelField labelField = (LabelField)new LabelField(labelString[0], labelString[1])

@@ -14,11 +14,17 @@ public class TagMultipleImagesAction extends AbstractAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        if (MainWindow.getInstance().getBrowseMode() == MainWindow.BrowseMode.IMAGE_SET) {
-            MainWindow.getInstance().showMessageDialog("Tag images", "This feature only works when browsing the file system.");
+        if (MainWindow.getInstance().getBrowseMode() == MainWindow.BrowseMode.FILE_SYSTEM
+            && MainWindow.getInstance().getCurrentDirectory() == null) {
+            MainWindow.getInstance().showMessageDialog("Tag images", "No directory selected.");
+            return;
+        }
+        if (MainWindow.getInstance().getBrowseMode() == MainWindow.BrowseMode.IMAGE_SET
+            && MainWindow.getInstance().getImageSetPanel().getSelectedImageSet().isEmpty()) {
+            MainWindow.getInstance().showMessageDialog("Tag images", "No image set selected.");
             return;
         }
 
-        new TagImagesDialog("Tag images", MainWindow.getInstance().getCurrentDirectory()).setVisible(true);
+        new TagImagesDialog("Tag images").setVisible(true);
     }
 }

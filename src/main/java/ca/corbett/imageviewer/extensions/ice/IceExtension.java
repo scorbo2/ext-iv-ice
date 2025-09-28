@@ -101,7 +101,7 @@ public class IceExtension extends ImageViewerExtension {
             return null;
         }
         if (position == getConfiguredPanelPosition()) {
-            tagPanel = new TagPanel();
+            tagPanel = new TagPanel(); // TODO we can't hold a reference to this... or if we do we need it to be a List... there might be two (main window + full screen)
             return tagPanel;
         }
         return null;
@@ -120,10 +120,10 @@ public class IceExtension extends ImageViewerExtension {
         tagSingleImageItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_G, InputEvent.CTRL_DOWN_MASK));
         iceMenu.add(tagSingleImageItem);
 
-        if (browseMode == MainWindow.BrowseMode.FILE_SYSTEM) {
-            JMenuItem tagMultiImagesItem = new JMenuItem(new TagMultipleImagesAction("Tag images..."));
-            iceMenu.add(tagMultiImagesItem);
+        JMenuItem tagMultiImagesItem = new JMenuItem(new TagMultipleImagesAction("Tag images..."));
+        iceMenu.add(tagMultiImagesItem);
 
+        if (browseMode == MainWindow.BrowseMode.FILE_SYSTEM) {
             if (TagIndex.isEnabled()) {
                 JMenuItem scanDirItem = new JMenuItem(new ScanDirAction("Tag scan: current directory", false));
                 iceMenu.add(scanDirItem);
