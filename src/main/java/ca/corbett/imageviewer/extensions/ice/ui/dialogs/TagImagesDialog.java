@@ -1,5 +1,6 @@
 package ca.corbett.imageviewer.extensions.ice.ui.dialogs;
 
+import ca.corbett.extras.LookAndFeelManager;
 import ca.corbett.extras.progress.MultiProgressDialog;
 import ca.corbett.extras.progress.SimpleProgressAdapter;
 import ca.corbett.forms.Alignment;
@@ -186,7 +187,7 @@ public class TagImagesDialog extends JDialog {
      * is addressed. TODO don't forget to remove me later!
      */
     public void setHyperlink(JLabel linkLabel, Action action) {
-        linkLabel.setForeground(Color.BLUE);
+        linkLabel.setForeground(LookAndFeelManager.getLafColor("Component.linkColor", Color.BLUE));
         linkLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         Map attributes = linkLabel.getFont().getAttributes();
         attributes.put(TextAttribute.UNDERLINE, TextAttribute.UNDERLINE_ON);
