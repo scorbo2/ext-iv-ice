@@ -13,10 +13,13 @@ import javax.imageio.stream.ImageInputStream;
 import java.awt.Dimension;
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  * Goes through a directory with optional recursion and applies the given tags to every image that it finds there.
@@ -43,6 +46,35 @@ public class BatchTagThread extends SimpleProgressWorker {
 
     private static final Logger log = Logger.getLogger(BatchTagThread.class.getName());
 
+    public enum TaggingOperation {
+        ADD("Add these tags to the existing tag lists"),
+        REPLACE("Replace all existing tags with these tags"),
+        REMOVE("Remove these tags if they are present");
+
+        private final String label;
+
+        TaggingOperation(String label) {
+            this.label = label;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
+
+        public static List<String> getLabels() {
+            return Arrays.stream(values())
+                         .map(Enum::toString)
+                         .collect(Collectors.toList());
+        }
+
+        public static Optional<TaggingOperation> fromLabel(String label) {
+            return Arrays.stream(values())
+                         .filter(e -> e.toString().equals(label))
+                         .findFirst();
+        }
+    };
+
     public static final String IMAGE_DIR_NAME_TOKEN = "$(imageDirName)";
     public static final String IMAGE_DIR_PATH_TOKEN = "$(imageDirPath)";
     public static final String PARENT_DIR_NAME_TOKEN = "$(parentDirName)";
@@ -51,17 +83,17 @@ public class BatchTagThread extends SimpleProgressWorker {
 
     private final File startDir;
     private final boolean isRecursive;
-    private final boolean isReplaceTags;
+    private final TaggingOperation tagOp;
     private final TagList tagList;
     private int totalProcessed;
     private int countCreated;
     private int countUpdated;
     private boolean wasCanceled;
 
-    public BatchTagThread(File dir, boolean isRecursive, boolean isReplaceTags, TagList tagList) {
+    public BatchTagThread(File dir, boolean isRecursive, TaggingOperation tagOp, TagList tagList) {
         this.startDir = dir;
         this.isRecursive = isRecursive;
-        this.isReplaceTags = isReplaceTags;
+        this.tagOp = tagOp;
         this.tagList = tagList;
         this.wasCanceled = false;
     }
@@ -84,11 +116,31 @@ public class BatchTagThread extends SimpleProgressWorker {
                 countCreated++;
             }
             TagList tagsToModify = TagList.fromFile(tagFile);
-            if (isReplaceTags) {
+
+            // Clear the existing tags if we're replacing them:
+            if (tagOp == TaggingOperation.REPLACE) {
                 tagsToModify.clear();
             }
-            tagsToModify.addAll(tagList);
-            handleTokenReplacements(tagsToModify, imageFile);
+
+            // Add all tags and handle token replacements:
+            if (tagOp == TaggingOperation.REPLACE || tagOp == TaggingOperation.ADD) {
+                tagsToModify.addAll(tagList);
+                handleTokenReplacements(tagsToModify, imageFile);
+            }
+
+            // Or, remove the specified tags if we're removing (be sure to include token replacement tags properly):
+            if (tagOp == TaggingOperation.REMOVE) {
+                TagList tokensToRemove = new TagList();
+                tokensToRemove.addAll(tagList);
+                handleTokenReplacements(tokensToRemove, imageFile);
+
+                // Now we have the tokens that we need to seek and destroy:
+                for (String token : tokensToRemove.getTags()) {
+                    tagsToModify.remove(token);
+                }
+            }
+
+            // Save this tag list and update the tag index:
             tagsToModify.save();
             TagIndex.getInstance().addOrUpdateEntry(imageFile, tagFile);
             totalProcessed++;

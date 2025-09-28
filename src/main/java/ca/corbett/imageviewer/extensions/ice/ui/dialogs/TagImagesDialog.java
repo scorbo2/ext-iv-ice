@@ -13,6 +13,8 @@ import ca.corbett.imageviewer.extensions.ice.TagList;
 import ca.corbett.imageviewer.extensions.ice.threads.BatchTagThread;
 import ca.corbett.imageviewer.ui.MainWindow;
 
+import static ca.corbett.imageviewer.extensions.ice.threads.BatchTagThread.TaggingOperation;
+
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
@@ -33,10 +35,6 @@ public class TagImagesDialog extends JDialog {
     private static final String[] recurseOptions = {
             "Tag all images in this directory",
             "Tag all images in this directory recursively"
-    };
-    private static final String[] replaceOptions = {
-            "Add these tags to the existing tag lists",
-            "Remove existing tag lists and replace with these tags"
     };
 
     private FormPanel formPanel;
@@ -61,7 +59,7 @@ public class TagImagesDialog extends JDialog {
         MultiProgressDialog dialog = new MultiProgressDialog(this, "Tag images");
         final BatchTagThread thread = new BatchTagThread(startDir,
                                                          recursiveField.getSelectedIndex() == 1,
-                                                         tagReplaceField.getSelectedIndex() == 1,
+                                                         getTagOp(),
                                                          TagList.of(textField.getText()));
         thread.addProgressListener(new SimpleProgressAdapter() {
             @Override
@@ -84,6 +82,10 @@ public class TagImagesDialog extends JDialog {
         dialog.runWorker(thread, true);
     }
 
+    private TaggingOperation getTagOp() {
+        return TaggingOperation.fromLabel(tagReplaceField.getSelectedItem()).orElse(TaggingOperation.ADD);
+    }
+
     private JPanel buildFormPanel() {
         formPanel = new FormPanel(Alignment.TOP_CENTER);
         formPanel.setBorderMargin(10);
@@ -91,7 +93,7 @@ public class TagImagesDialog extends JDialog {
         recursiveField = new ComboField<>("Batch type:", List.of(recurseOptions), 0);
         formPanel.add(recursiveField);
 
-        tagReplaceField = new ComboField<>("Action type:", List.of(replaceOptions), 0);
+        tagReplaceField = new ComboField<>("Action type:", TaggingOperation.getLabels(), 0);
         formPanel.add(tagReplaceField);
 
         textField = LongTextField.ofDynamicSizingMultiLine("Tags:", 6);
