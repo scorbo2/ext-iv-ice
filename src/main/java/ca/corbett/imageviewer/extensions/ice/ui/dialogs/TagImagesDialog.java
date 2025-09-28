@@ -15,15 +15,26 @@ import ca.corbett.imageviewer.ui.MainWindow;
 
 import static ca.corbett.imageviewer.extensions.ice.threads.BatchTagThread.TaggingOperation;
 
+import javax.swing.AbstractAction;
+import javax.swing.Action;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.font.TextAttribute;
 import java.io.File;
 import java.util.List;
+import java.util.Map;
+import java.util.logging.Logger;
 
 /**
  * For batch-tagging a directory of images.
@@ -31,6 +42,8 @@ import java.util.List;
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
 public class TagImagesDialog extends JDialog {
+
+    private static final Logger log = Logger.getLogger(TagImagesDialog.class.getName());
 
     private static final String[] recurseOptions = {
             "Tag all images in this directory",
@@ -64,7 +77,7 @@ public class TagImagesDialog extends JDialog {
         thread.addProgressListener(new SimpleProgressAdapter() {
             @Override
             public void progressCanceled() {
-                // show a message maybe?
+                log.info("Batch tagging operation was canceled by user.");
             }
 
             @Override
@@ -84,6 +97,20 @@ public class TagImagesDialog extends JDialog {
 
     private TaggingOperation getTagOp() {
         return TaggingOperation.fromLabel(tagReplaceField.getSelectedItem()).orElse(TaggingOperation.ADD);
+    }
+
+    /**
+     * Adds the given tag to the text box if it's not already there, or removes it if it is there.
+     */
+    private void toggleTag(String tag) {
+        TagList tagList = TagList.of(textField.getText());
+        if (tagList.hasTag(tag)) {
+            tagList.remove(tag);
+        }
+        else {
+            tagList.add(tag);
+        }
+        textField.setText(tagList.toString());
     }
 
     private JPanel buildFormPanel() {
@@ -106,11 +133,22 @@ public class TagImagesDialog extends JDialog {
         FormPanel labelPanel = new FormPanel(Alignment.TOP_LEFT);
         labelPanel.add(LabelField.createBoldHeaderLabel("Substitution tokens", 14).setMargins(new Margins(10,32,10,2,0)));
         labelPanel.add(LabelField.createPlainHeaderLabel("You can use the following tokens to create tags dynamically:", 12).setMargins(new Margins(10,4,10,6,0)));
-        labelPanel.add(new LabelField("<html><b>$(imageDirName)</b></html>:", "The name of the containing directory").setMargins(new Margins(38,4,4,2,8)));
-        labelPanel.add(new LabelField("<html><b>$(imageDirPath)</b></html>:", "The full path of the containing directory").setMargins(new Margins(38,2,4,2,8)));
-        labelPanel.add(new LabelField("<html><b>$(parentDirName)</b></html>:", "The name of the containing directory's parent directory").setMargins(new Margins(38,2,4,2,8)));
-        labelPanel.add(new LabelField("<html><b>$(parentDirPath)</b></html>:", "The full path of the containing directory's parent directory").setMargins(new Margins(38,2,4,2,8)));
-        labelPanel.add(new LabelField("<html><b>$(aspectRatio)</b></html>:", "A fixed value of \"landscape\", \"portrait\", or \"square\"").setMargins(new Margins(38,2,4,4,8)));
+
+        String[][] labelStrings = {
+                {"<html><b>$(imageDirName)</b></html>:", "The name of the containing directory", "$(imageDirName)"},
+                {"<html><b>$(imageDirPath)</b></html>:", "The full path of the containing directory", "$(imageDirPath)"},
+                {"<html><b>$(parentDirName)</b></html>:", "The name of the containing directory's parent directory", "$(parentDirName)"},
+                {"<html><b>$(parentDirPath)</b></html>:", "The full path of the containing directory's parent directory", "$(parentDirPath)"},
+                {"<html><b>$(aspectRatio)</b></html>:", "A fixed value of \"landscape\", \"portrait\", or \"square\"", "$(aspectRatio)"}
+        };
+
+        for (String[] labelString : labelStrings) {
+            LabelField labelField = (LabelField)new LabelField(labelString[0], labelString[1])
+                    .setMargins(new Margins(38, 4, 4, 2, 8));
+            setHyperlink(labelField.getFieldLabel(), new FieldLabelAction(this, labelString[2]));
+            labelPanel.add(labelField);
+        }
+
         panelField.getPanel().add(labelPanel, BorderLayout.CENTER);
         panelField.setShouldExpand(true);
         formPanel.add(panelField);
@@ -142,4 +180,38 @@ public class TagImagesDialog extends JDialog {
         return buttonPanel;
     }
 
+    /**
+     * Internal utility method required here until
+     * <A href="https://github.com/scorbo2/swing-extras/issues/132">swing-extras issue 132</A>
+     * is addressed. TODO don't forget to remove me later!
+     */
+    public void setHyperlink(JLabel linkLabel, Action action) {
+        linkLabel.setForeground(Color.BLUE);
+        linkLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        Map attributes = linkLabel.getFont().getAttributes();
+        attributes.put(TextAttribute.UNDERLINE, TextAttribute.UNDERLINE_ON);
+        linkLabel.setFont(linkLabel.getFont().deriveFont(attributes));
+        linkLabel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                action.actionPerformed(null);
+            }
+        });
+    }
+
+    private static class FieldLabelAction extends AbstractAction {
+
+        private final TagImagesDialog owner;
+        private final String tag;
+
+        public FieldLabelAction(TagImagesDialog owner, String tag) {
+            this.owner = owner;
+            this.tag = tag;
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            owner.toggleTag(tag);
+        }
+    }
 }
