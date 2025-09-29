@@ -7,6 +7,7 @@ import ca.corbett.extras.properties.AbstractProperty;
 import ca.corbett.extras.properties.BooleanProperty;
 import ca.corbett.extras.properties.ComboProperty;
 import ca.corbett.extras.properties.IntegerProperty;
+import ca.corbett.extras.properties.PropertiesManager;
 import ca.corbett.imageviewer.AppConfig;
 import ca.corbett.imageviewer.ImageOperation;
 import ca.corbett.imageviewer.extensions.ImageViewerExtension;
@@ -14,7 +15,8 @@ import ca.corbett.imageviewer.extensions.ice.actions.ScanDirAction;
 import ca.corbett.imageviewer.extensions.ice.actions.TagMultipleImagesAction;
 import ca.corbett.imageviewer.extensions.ice.actions.TagSingleImageAction;
 import ca.corbett.imageviewer.extensions.ice.actions.SearchAction;
-import ca.corbett.imageviewer.extensions.ice.ui.TagPanel;
+import ca.corbett.imageviewer.extensions.ice.ui.QuickTagPanel;
+import ca.corbett.imageviewer.extensions.ice.ui.TagPreviewPanel;
 import ca.corbett.imageviewer.ui.ImageInstance;
 import ca.corbett.imageviewer.ui.MainWindow;
 import ca.corbett.imageviewer.ui.ThumbPanel;
@@ -46,10 +48,22 @@ public class IceExtension extends ImageViewerExtension {
     private static final String extInfoLocation = "/ca/corbett/imageviewer/extensions/ice/extInfo.json";
     private final AppExtensionInfo extInfo;
 
-    private static final String[] validPositions = {"Above main image", "Below main image"};
-    private static final String fontSizePropName = "Thumbnails.Companion files.linkFontSize";
+    private static final String[] validPositionsTagPreviewPanel = {
+            "Don't show tag preview",
+            "Show above main image",
+            "Show below main image"
+    };
+    private static final String[] validPositionsQuickTagPanel = {
+            "Don't show quick tag panel",
+            "Left",
+            "Right"
+    };
+    private static final String tagPreviewPanelPositionProp = "ICE.General.tagPreviewPanelPosition";
+    private static final String quickTagPanelPositionProp = "ICE.General.quickTagPanelPosition";
+    private static final String fontSizeProp = "Thumbnails.Companion files.linkFontSize";
 
-    private final List<TagPanel> tagPanels = new ArrayList<>();
+    private final List<TagPreviewPanel> tagPreviewPanels = new ArrayList<>();
+    private final List<QuickTagPanel> quickTagPanels = new ArrayList<>();
 
     public IceExtension() {
         extInfo = AppExtensionInfo.fromExtensionJar(getClass(), extInfoLocation);
@@ -66,9 +80,11 @@ public class IceExtension extends ImageViewerExtension {
     @Override
     protected List<AbstractProperty> createConfigProperties() {
         List<AbstractProperty> list = new ArrayList<>();
-        list.add(new BooleanProperty("ICE.General.showTagPanel", "Show tag panel on main image tab", true));
-        list.add(new ComboProperty<>("ICE.General.position", "Tag panel position:", Arrays.asList(validPositions), 1, false));
-        list.add(new IntegerProperty(fontSizePropName, "Hyperlink font size", 10, 8, 16, 1));
+        list.add(new ComboProperty<>(tagPreviewPanelPositionProp, "Read-only tag preview:",
+                                     Arrays.asList(validPositionsTagPreviewPanel), 2, false));
+        list.add(new ComboProperty<>(quickTagPanelPositionProp, "Quick tag position:",
+                                     Arrays.asList(validPositionsQuickTagPanel), 1, false));
+        list.add(new IntegerProperty(fontSizeProp, "Hyperlink font size", 10, 8, 16, 1));
         list.add(new BooleanProperty(TagIndex.PROP_NAME, "Enable tag index for faster searches", true));
         return list;
     }
@@ -83,28 +99,48 @@ public class IceExtension extends ImageViewerExtension {
         TagIndex.getInstance().save();
     }
 
-    private ExtraPanelPosition getConfiguredPanelPosition() {
+    private ExtraPanelPosition getTagPreviewPositionFromConfig() {
+        PropertiesManager propsManager = AppConfig.getInstance().getPropertiesManager();
         //noinspection unchecked
-        ComboProperty<String> prop = (ComboProperty<String>)AppConfig.getInstance().getPropertiesManager().getProperty("ICE.General.position");
-        if (prop == null) {
-            return ExtraPanelPosition.Bottom; // arbitrary default, should really log the failure though
+        ComboProperty<String> prop = (ComboProperty<String>)propsManager.getProperty(tagPreviewPanelPositionProp);
+        if (prop != null) {
+            return switch (prop.getSelectedIndex()) {
+                case 1 -> ExtraPanelPosition.Top;
+                case 2 -> ExtraPanelPosition.Bottom;
+                default -> null;
+            };
         }
-        if (prop.getSelectedIndex() == 0) {
-            return ExtraPanelPosition.Top;
+        return null;
+    }
+
+    private ExtraPanelPosition getQuickTagPositionFromConfig() {
+        PropertiesManager propsManager = AppConfig.getInstance().getPropertiesManager();
+        //noinspection unchecked
+        ComboProperty<String> prop = (ComboProperty<String>)propsManager.getProperty(quickTagPanelPositionProp);
+        if (prop != null) {
+            return switch (prop.getSelectedIndex()) {
+                case 1 -> ExtraPanelPosition.Left;
+                case 2 -> ExtraPanelPosition.Right;
+                default -> null;
+            };
         }
-        return ExtraPanelPosition.Bottom;
+        return null;
     }
 
     @Override
     public JComponent getExtraPanelComponent(ExtraPanelPosition position) {
-        if (! ((BooleanProperty)AppConfig.getInstance().getPropertiesManager().getProperty("ICE.General.showTagPanel")).getValue()) {
-            return null;
+        if (position == getTagPreviewPositionFromConfig()) {
+            TagPreviewPanel tagPreviewPanel = new TagPreviewPanel(); // create a new one for each request... other extensions may ask for it
+            tagPreviewPanels.add(tagPreviewPanel);
+            return tagPreviewPanel;
         }
-        if (position == getConfiguredPanelPosition()) {
-            TagPanel tagPanel = new TagPanel(); // create a new one for each request... other extensions may ask for it
-            tagPanels.add(tagPanel);
-            return tagPanel;
+
+        if (position == getQuickTagPositionFromConfig()) {
+            QuickTagPanel panel = new QuickTagPanel(); // create a new one on each request
+            quickTagPanels.add(panel);
+            return panel;
         }
+
         return null;
     }
 
@@ -207,13 +243,13 @@ public class IceExtension extends ImageViewerExtension {
 
     @Override
     public void imageSelected(ImageInstance selectedImage) {
-        if (tagPanels.isEmpty()) {
+        if (tagPreviewPanels.isEmpty()) {
             return;
         }
 
         if (selectedImage.isEmpty()) {
-            for (TagPanel tagPanel : tagPanels) {
-                tagPanel.clearTags();
+            for (TagPreviewPanel tagPreviewPanel : tagPreviewPanels) {
+                tagPreviewPanel.clearTags();
             }
             return;
         }
@@ -225,8 +261,8 @@ public class IceExtension extends ImageViewerExtension {
                 return;
             }
             TagList tagList = TagList.fromFile(file);
-            for (TagPanel tagPanel : tagPanels) {
-                tagPanel.setTagList(tagList);
+            for (TagPreviewPanel tagPreviewPanel : tagPreviewPanels) {
+                tagPreviewPanel.setTagList(tagList);
             }
         }
     }
@@ -346,10 +382,11 @@ public class IceExtension extends ImageViewerExtension {
      * @return A JLabel
      */
     private JLabel createLabel(final String text) {
-        IntegerProperty fontSizeProp = (IntegerProperty)AppConfig.getInstance().getPropertiesManager().getProperty(fontSizePropName);
+        IntegerProperty fontSizeProp = (IntegerProperty)AppConfig.getInstance().getPropertiesManager().getProperty(
+                IceExtension.fontSizeProp);
         if (fontSizeProp == null) {
             log.log(Level.SEVERE, "IceExtension: can't find our config property!");
-            fontSizeProp = new IntegerProperty(fontSizePropName, "Hyperlink font size", 10, 8, 16, 1);
+            fontSizeProp = new IntegerProperty(IceExtension.fontSizeProp, "Hyperlink font size", 10, 8, 16, 1);
         }
         JLabel label = new JLabel(text, JLabel.CENTER);
         label.setFont(label.getFont().deriveFont((float)fontSizeProp.getValue()));

@@ -14,10 +14,10 @@ import java.awt.BorderLayout;
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
-public class TagPanel extends JPanel {
+public class TagPreviewPanel extends JPanel {
     private LongTextField textField;
 
-    public TagPanel() {
+    public TagPreviewPanel() {
         setLayout(new BorderLayout());
         FormPanel formPanel = new FormPanel(Alignment.TOP_CENTER);
         formPanel.setBorderMargin(6);

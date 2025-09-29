@@ -136,7 +136,7 @@ public class TagList {
      * Convert to lowercase, remove leading and trailing whitespace,
      * remove DISALLOWED characters, convert null to empty string.
      */
-    protected static String stripTag(String tag) {
+    public static String stripTag(String tag) {
         if (tag == null) {
             return "";
         }
