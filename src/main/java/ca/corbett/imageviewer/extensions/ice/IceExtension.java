@@ -49,7 +49,7 @@ public class IceExtension extends ImageViewerExtension {
     private static final String[] validPositions = {"Above main image", "Below main image"};
     private static final String fontSizePropName = "Thumbnails.Companion files.linkFontSize";
 
-    private TagPanel tagPanel;
+    private final List<TagPanel> tagPanels = new ArrayList<>();
 
     public IceExtension() {
         extInfo = AppExtensionInfo.fromExtensionJar(getClass(), extInfoLocation);
@@ -101,7 +101,8 @@ public class IceExtension extends ImageViewerExtension {
             return null;
         }
         if (position == getConfiguredPanelPosition()) {
-            tagPanel = new TagPanel(); // TODO we can't hold a reference to this... or if we do we need it to be a List... there might be two (main window + full screen)
+            TagPanel tagPanel = new TagPanel(); // create a new one for each request... other extensions may ask for it
+            tagPanels.add(tagPanel);
             return tagPanel;
         }
         return null;
@@ -206,19 +207,26 @@ public class IceExtension extends ImageViewerExtension {
 
     @Override
     public void imageSelected(ImageInstance selectedImage) {
-        if (tagPanel == null) {
+        if (tagPanels.isEmpty()) {
             return;
         }
 
-        tagPanel.clearTags();
-        if (! selectedImage.isEmpty()) {
-            File imageFile = selectedImage.getImageFile();
-            if (imageFile != null && imageFile.exists()) {
-                File file = new File(imageFile.getParentFile(),
-                                     FilenameUtils.getBaseName(imageFile.getName())+".ice");
-                if (file.exists()) {
-                    tagPanel.setTagList(TagList.fromFile(file));
-                }
+        if (selectedImage.isEmpty()) {
+            for (TagPanel tagPanel : tagPanels) {
+                tagPanel.clearTags();
+            }
+            return;
+        }
+
+        File imageFile = selectedImage.getImageFile();
+        if (imageFile != null && imageFile.exists()) {
+            File file = new File(imageFile.getParentFile(), FilenameUtils.getBaseName(imageFile.getName()) + ".ice");
+            if (! file.exists()) {
+                return;
+            }
+            TagList tagList = TagList.fromFile(file);
+            for (TagPanel tagPanel : tagPanels) {
+                tagPanel.setTagList(tagList);
             }
         }
     }
