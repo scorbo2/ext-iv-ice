@@ -1,7 +1,5 @@
 package ca.corbett.imageviewer.extensions.ice;
 
-import ca.corbett.extras.io.FileSystemUtil;
-import ca.corbett.extras.progress.MultiProgressWorker;
 import ca.corbett.extras.properties.BooleanProperty;
 import ca.corbett.imageviewer.AppConfig;
 import ca.corbett.imageviewer.Version;
@@ -100,8 +98,20 @@ public class TagIndex {
         indexEntries.remove(imageFile.getAbsolutePath());
     }
 
-    public boolean isIndexed(File imageFile) {
-        return indexEntries.containsKey(imageFile.getAbsolutePath());
+    /**
+     * Checks if the given imageFile is present in the index and returns false if not.
+     * If present, also checks to ensure that the given tagFile has an up-to-date
+     * entry in the TagIndex. If not, updates it.
+     */
+    public boolean IsIndexedAndUpToDate(File imageFile, File tagFile) {
+        TagIndexEntry entry = indexEntries.get(imageFile.getAbsolutePath());
+        if (entry == null) {
+            return false;
+        }
+        if (entry.getTagFileSize() != tagFile.length() || entry.getTagFileLastModified() != tagFile.lastModified()) {
+            addOrUpdateEntry(imageFile, tagFile);
+        }
+        return true;
     }
 
     public boolean containsAll(File imageFile, TagList tags) {

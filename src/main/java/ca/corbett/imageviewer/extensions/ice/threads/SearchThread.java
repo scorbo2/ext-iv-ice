@@ -72,7 +72,7 @@ public class SearchThread extends MultiProgressWorker {
                 boolean isMatch;
 
                 // Give the tag index first crack at it:
-                if (TagIndex.isEnabled() && TagIndex.getInstance().isIndexed(imageFile)) {
+                if (TagIndex.isEnabled() && TagIndex.getInstance().IsIndexedAndUpToDate(imageFile, candidateFile)) {
                     isMatch = switch (searchMode) {
                         case CONTAINS_ALL -> TagIndex.getInstance().containsAll(imageFile, searchTags);
                         case CONTAINS_ANY -> TagIndex.getInstance().containsAny(imageFile, searchTags);
