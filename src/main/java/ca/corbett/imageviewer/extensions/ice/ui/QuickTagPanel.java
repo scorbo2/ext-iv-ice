@@ -1,6 +1,7 @@
 package ca.corbett.imageviewer.extensions.ice.ui;
 
 import ca.corbett.extras.LookAndFeelManager;
+import ca.corbett.extras.image.ImageUtil;
 import ca.corbett.extras.io.FileSystemUtil;
 import ca.corbett.extras.properties.ComboProperty;
 import ca.corbett.extras.properties.IntegerProperty;
@@ -9,11 +10,14 @@ import ca.corbett.imageviewer.Version;
 import ca.corbett.imageviewer.extensions.ImageViewerExtensionManager;
 import ca.corbett.imageviewer.extensions.ice.IceExtension;
 import ca.corbett.imageviewer.extensions.ice.TagList;
+import ca.corbett.imageviewer.extensions.ice.ui.dialogs.TagListEditDialog;
 import ca.corbett.imageviewer.ui.ImageInstance;
 import ca.corbett.imageviewer.ui.MainWindow;
 import ca.corbett.imageviewer.ui.actions.ReloadUIAction;
+import ca.corbett.imageviewer.ui.imagesets.ImageSetPanel;
 import org.apache.commons.io.FilenameUtils;
 
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -25,8 +29,11 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class QuickTagPanel extends JPanel {
@@ -38,12 +45,23 @@ public class QuickTagPanel extends JPanel {
 
     private final File tagDir;
     private int panelWidth;
+    private BufferedImage iconAddTag;
+    private BufferedImage iconEditTagGroup;
+    private BufferedImage iconRemoveTagGroup;
 
     public QuickTagPanel() {
         setLayout(new GridBagLayout());
         tagDir = new File(Version.SETTINGS_DIR, "quickTags");
         if (!tagDir.exists()) {
             tagDir.mkdirs();
+        }
+        try {
+            iconAddTag = ImageSetPanel.loadIconImage("icon-plus.png");
+            iconEditTagGroup = ImageSetPanel.loadIconImage("icon-document-edit.png");
+            iconRemoveTagGroup = ImageSetPanel.loadIconImage("icon-x.png");
+        }
+        catch (IOException ioe) {
+            log.log(Level.SEVERE, "QuickTagPanel: error loading icon images: "+ioe.getMessage(), ioe);
         }
         reset();
     }
@@ -91,7 +109,7 @@ public class QuickTagPanel extends JPanel {
 
     private void addLabel(String text, int row) {
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridwidth = 2;
+        gbc.gridwidth = 3;
         gbc.gridy = row;
         gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.BOTH;
@@ -108,7 +126,7 @@ public class QuickTagPanel extends JPanel {
 
     private void addSpacer(int row) {
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridwidth = 2;
+        gbc.gridwidth = 3;
         gbc.gridy = row;
         gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.BOTH;
@@ -120,7 +138,7 @@ public class QuickTagPanel extends JPanel {
 
     private void addButton(JButton button, int row) {
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridwidth = 2;
+        gbc.gridwidth = 3;
         gbc.gridy = row;
         gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.BOTH;
@@ -129,8 +147,9 @@ public class QuickTagPanel extends JPanel {
     }
 
     private void addGroupEditButtons(TagList list, int row) {
-        JButton button = createButton("Add");
-        button.setPreferredSize(new Dimension(panelWidth/2, RowHeight));
+        JButton button = createButton("");
+        button.setIcon(new ImageIcon(iconAddTag, "Add tag"));
+        button.setPreferredSize(new Dimension(panelWidth/3, RowHeight));
         button.addActionListener(e -> addNewTag(list));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridwidth = 1;
@@ -141,10 +160,19 @@ public class QuickTagPanel extends JPanel {
         gbc.insets = new Insets(0, SideMargin, 12, 0);
         add(button, gbc);
 
-        button = createButton("Edit");
-        button.setPreferredSize(new Dimension(panelWidth/2, RowHeight));
-        button.addActionListener(e -> editTagGroup());
+        button = createButton("");
+        button.setIcon(new ImageIcon(iconEditTagGroup, "Edit tag group"));
+        button.setPreferredSize(new Dimension(panelWidth/3, RowHeight));
+        button.addActionListener(e -> editTagGroup(list));
         gbc.gridx = 1;
+        gbc.insets = new Insets(0, 0, 12, 0);
+        add(button, gbc);
+
+        button = createButton("");
+        button.setIcon(new ImageIcon(iconRemoveTagGroup, "Remove tag group"));
+        button.setPreferredSize(new Dimension(panelWidth/3, RowHeight));
+        button.addActionListener(e -> removeTagGroup(list));
+        gbc.gridx = 2;
         gbc.insets = new Insets(0, 0, 12, SideMargin);
         add(button, gbc);
     }
@@ -153,6 +181,13 @@ public class QuickTagPanel extends JPanel {
         JButton button = createButton("New group...");
         button.addActionListener(e -> addNewGroup());
         addButton(button, row);
+    }
+
+    private void removeTagGroup(TagList list) {
+        if (JOptionPane.showConfirmDialog(MainWindow.getInstance(), "Really remove this tag group?") == JOptionPane.YES_OPTION) {
+            list.getPersistenceFile().delete();
+            reset();
+        }
     }
 
     private void addHidePanelButton(int row) {
@@ -184,8 +219,15 @@ public class QuickTagPanel extends JPanel {
         return button;
     }
 
-    private void editTagGroup() {
-        // TODO
+    private void editTagGroup(TagList list) {
+        TagListEditDialog dialog = new TagListEditDialog("Edit quick tag group", list);
+        dialog.setVisible(true);
+        if (dialog.wasOkayed()) {
+            list.clear();
+            list.addAll(dialog.getModifiedTagList());
+            list.save();
+            reset();
+        }
     }
 
     private void hidePanel() {
