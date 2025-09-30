@@ -27,6 +27,7 @@ import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.KeyStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -58,9 +59,10 @@ public class IceExtension extends ImageViewerExtension {
             "Left",
             "Right"
     };
-    private static final String tagPreviewPanelPositionProp = "ICE.General.tagPreviewPanelPosition";
-    private static final String quickTagPanelPositionProp = "ICE.General.quickTagPanelPosition";
-    private static final String fontSizeProp = "Thumbnails.Companion files.linkFontSize";
+    public static final String tagPreviewPanelPositionProp = "ICE.General.tagPreviewPanelPosition";
+    public static final String quickTagPanelPositionProp = "ICE.General.quickTagPanelPosition";
+    public static final String quickTagPanelWidthProp = "ICE.General.quickTagPanelWidth";
+    public static final String fontSizeProp = "Thumbnails.Companion files.linkFontSize";
 
     private final List<TagPreviewPanel> tagPreviewPanels = new ArrayList<>();
     private final List<QuickTagPanel> quickTagPanels = new ArrayList<>();
@@ -84,6 +86,7 @@ public class IceExtension extends ImageViewerExtension {
                                      Arrays.asList(validPositionsTagPreviewPanel), 2, false));
         list.add(new ComboProperty<>(quickTagPanelPositionProp, "Quick tag position:",
                                      Arrays.asList(validPositionsQuickTagPanel), 1, false));
+        list.add(new IntegerProperty(quickTagPanelWidthProp, "Quick tag panel width:", 200, 120, 300, 10));
         list.add(new IntegerProperty(fontSizeProp, "Hyperlink font size", 10, 8, 16, 1));
         list.add(new BooleanProperty(TagIndex.PROP_NAME, "Enable tag index for faster searches", true));
         return list;
@@ -138,7 +141,7 @@ public class IceExtension extends ImageViewerExtension {
         if (position == getQuickTagPositionFromConfig()) {
             QuickTagPanel panel = new QuickTagPanel(); // create a new one on each request
             quickTagPanels.add(panel);
-            return panel;
+            return new JScrollPane(panel);
         }
 
         return null;
