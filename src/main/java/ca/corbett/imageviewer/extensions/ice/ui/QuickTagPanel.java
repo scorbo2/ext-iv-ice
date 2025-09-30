@@ -9,6 +9,7 @@ import ca.corbett.imageviewer.AppConfig;
 import ca.corbett.imageviewer.Version;
 import ca.corbett.imageviewer.extensions.ImageViewerExtensionManager;
 import ca.corbett.imageviewer.extensions.ice.IceExtension;
+import ca.corbett.imageviewer.extensions.ice.TagIndex;
 import ca.corbett.imageviewer.extensions.ice.TagList;
 import ca.corbett.imageviewer.extensions.ice.ui.dialogs.TagListEditDialog;
 import ca.corbett.imageviewer.ui.ImageInstance;
@@ -103,6 +104,7 @@ public class QuickTagPanel extends JPanel {
                 imageTags.add(tag);
             }
             imageTags.save();
+            TagIndex.getInstance().addOrUpdateEntry(image.getImageFile(), tagFile);
             ImageViewerExtensionManager.getInstance().imageSelected(image);
         }
     }
