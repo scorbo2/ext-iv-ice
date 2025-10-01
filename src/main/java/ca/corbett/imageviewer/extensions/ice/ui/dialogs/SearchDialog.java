@@ -39,6 +39,10 @@ public class SearchDialog extends JDialog {
     private static final String IMAGE_SET_ALL_PERMANENT = "All non-transient image sets";
     private static final String IMAGE_SET_ALL = "All image sets";
 
+    private static String previousTagAllContents = "";
+    private static String previousTagAnyContents = "";
+    private static String previousTagNoneContents = "";
+
     private MessageUtil messageUtil;
     private final MainWindow.BrowseMode browseMode;
     private FormPanel formPanel;
@@ -81,6 +85,11 @@ public class SearchDialog extends JDialog {
             }
         });
         progressDialog.runWorker(searchThread, true);
+
+        // Save search params for next time:
+        previousTagAllContents = tagFieldAll.getText();
+        previousTagAnyContents = tagFieldAny.getText();
+        previousTagNoneContents = tagFieldNone.getText();
     }
 
     private void handleSearchComplete(boolean wasCanceled, List<File> searchResults) {
@@ -149,16 +158,19 @@ public class SearchDialog extends JDialog {
         labelField.getMargins().setTop(24);
         formPanel.add(labelField);
         tagFieldAll = new ShortTextField("ALL of these tags:", 28);
+        tagFieldAll.setText(previousTagAllContents);
         tagFieldAll.setHelpText("Comma-separated.");
         tagFieldAll.getMargins().setLeft(18);
         tagFieldAll.addFieldValidator(new TagFieldValidator());
         formPanel.add(tagFieldAll);
         tagFieldAny = new ShortTextField("ANY of these tags:", 28);
+        tagFieldAny.setText(previousTagAnyContents);
         tagFieldAny.setHelpText("Comma-separated.");
         tagFieldAny.getMargins().setLeft(18);
         tagFieldAny.addFieldValidator(new TagFieldValidator());
         formPanel.add(tagFieldAny);
         tagFieldNone = new ShortTextField("NONE of these tags:", 28);
+        tagFieldNone.setText(previousTagNoneContents);
         tagFieldNone.setHelpText("Comma-separated.");
         tagFieldNone.getMargins().setLeft(18);
         tagFieldNone.addFieldValidator(new TagFieldValidator());
