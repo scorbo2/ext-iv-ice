@@ -5,6 +5,8 @@ import ca.corbett.extras.progress.MultiProgressWorker;
 import ca.corbett.imageviewer.extensions.ice.IceExtension;
 import ca.corbett.imageviewer.extensions.ice.TagIndex;
 import ca.corbett.imageviewer.extensions.ice.TagList;
+import ca.corbett.imageviewer.ui.imagesets.ImageSet;
+import org.apache.commons.io.FilenameUtils;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -24,6 +26,7 @@ public class SearchThread extends MultiProgressWorker {
 
     private final File initialDir;
     private final boolean isRecursive;
+    private final List<ImageSet> imageSetsToSearch;
     private final TagList searchTagsAll;
     private final TagList searchTagsAny;
     private final TagList searchTagsNone;
@@ -33,6 +36,18 @@ public class SearchThread extends MultiProgressWorker {
     public SearchThread(File initialDir, boolean isRecursive, TagList findAll, TagList findAny, TagList findNone) {
         this.initialDir = initialDir;
         this.isRecursive = isRecursive;
+        this.imageSetsToSearch = null;
+        this.searchTagsAll = findAll;
+        this.searchTagsAny = findAny;
+        this.searchTagsNone = findNone;
+        searchResults = new ArrayList<>();
+        wasCanceled = false;
+    }
+
+    public SearchThread(List<ImageSet> imageSets, TagList findAll, TagList findAny, TagList findNone) {
+        this.initialDir = null;
+        this.isRecursive = false;
+        this.imageSetsToSearch = new ArrayList<>(imageSets);
         this.searchTagsAll = findAll;
         this.searchTagsAny = findAny;
         this.searchTagsNone = findNone;
@@ -55,8 +70,8 @@ public class SearchThread extends MultiProgressWorker {
             log.warning("ICE SearchThread executed with no search tags! All images will match.");
         }
 
-        fireProgressBegins(1);
-        List<File> iceFiles = FileSystemUtil.findFiles(initialDir, isRecursive, "ice");
+        fireProgressBegins(2);
+        List<File> iceFiles = getTagFiles();
         searchResults.clear();
         wasCanceled = false;
         int currentStep = 0;
@@ -141,5 +156,23 @@ public class SearchThread extends MultiProgressWorker {
             }
             fireProgressComplete();
         }
+    }
+
+    private List<File> getTagFiles() {
+        if (initialDir != null) {
+            return FileSystemUtil.findFiles(initialDir, isRecursive, "ice");
+        }
+
+        List<File> tagFiles = new ArrayList<>();
+        for (ImageSet imageSet : imageSetsToSearch) {
+            for (String filePath : imageSet.getImageFilePaths()) {
+                File imageFile = new File(filePath);
+                File tagFile = new File(imageFile.getParentFile(), FilenameUtils.getBaseName(imageFile.getName())+".ice");
+                if (tagFile.exists()) {
+                    tagFiles.add(tagFile);
+                }
+            }
+        }
+        return tagFiles;
     }
 }

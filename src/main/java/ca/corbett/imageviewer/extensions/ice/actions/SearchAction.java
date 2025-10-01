@@ -15,10 +15,6 @@ public class SearchAction extends AbstractAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        File initialDir = null;
-        if (MainWindow.getInstance().getBrowseMode() == MainWindow.BrowseMode.FILE_SYSTEM) {
-            initialDir = MainWindow.getInstance().getCurrentDirectory();
-        }
-        new SearchDialog(initialDir).setVisible(true);
+        new SearchDialog().setVisible(true);
     }
 }

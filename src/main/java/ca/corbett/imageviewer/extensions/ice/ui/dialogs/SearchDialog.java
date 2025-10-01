@@ -8,9 +8,7 @@ import ca.corbett.forms.FormPanel;
 import ca.corbett.forms.fields.CheckBoxField;
 import ca.corbett.forms.fields.ComboField;
 import ca.corbett.forms.fields.FileField;
-import ca.corbett.forms.fields.FormField;
 import ca.corbett.forms.fields.LabelField;
-import ca.corbett.forms.fields.LongTextField;
 import ca.corbett.forms.fields.ShortTextField;
 import ca.corbett.forms.validators.FieldValidator;
 import ca.corbett.forms.validators.ValidationResult;
@@ -25,10 +23,10 @@ import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
-import java.awt.Checkbox;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
@@ -37,35 +35,32 @@ public class SearchDialog extends JDialog {
 
     private static final Logger log = Logger.getLogger(SearchDialog.class.getName());
 
+    private static final String IMAGE_SET_CURRENT = "Currently selected image set";
+    private static final String IMAGE_SET_ALL_PERMANENT = "All non-transient image sets";
+    private static final String IMAGE_SET_ALL = "All image sets";
+
     private MessageUtil messageUtil;
-    private final File initialDir;
+    private final MainWindow.BrowseMode browseMode;
     private FormPanel formPanel;
     private ShortTextField searchNameField;
     private FileField dirField;
     private CheckBoxField recursiveField;
+    private ComboField<String> imageSetField;
     private ShortTextField tagFieldAll;
     private ShortTextField tagFieldAny;
     private ShortTextField tagFieldNone;
 
     public SearchDialog() {
-        this("Search", null);
-    }
-
-    public SearchDialog(File initialDir) {
-        this("Search", initialDir);
+        this("Search");
     }
 
     public SearchDialog(String title) {
-        this(title, null);
-    }
-
-    public SearchDialog(String title, File initialDir) {
         super(MainWindow.getInstance(), title, true);
-        this.initialDir = initialDir;
         setSize(new Dimension(630, 400));
         setResizable(false);
         setLocationRelativeTo(MainWindow.getInstance());
         setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        this.browseMode = MainWindow.getInstance().getBrowseMode();
         setLayout(new BorderLayout());
         add(buildFormPanel(), BorderLayout.CENTER);
         add(buildButtonPanel(), BorderLayout.SOUTH);
@@ -73,11 +68,7 @@ public class SearchDialog extends JDialog {
 
     private void doSearch() {
         MultiProgressDialog progressDialog = new MultiProgressDialog(this, "Search in progress");
-        final SearchThread searchThread = new SearchThread(dirField.getFile(),
-                                                           recursiveField.isChecked(),
-                                                           TagList.of(tagFieldAll.getText()),
-                                                           TagList.of(tagFieldAny.getText()),
-                                                           TagList.of(tagFieldNone.getText()));
+        final SearchThread searchThread = createSearchThread();
         searchThread.addProgressListener(new MultiProgressAdapter() {
             @Override
             public void progressCanceled() {
@@ -134,8 +125,22 @@ public class SearchDialog extends JDialog {
         });
         formPanel.add(searchNameField);
 
-        dirField = new FileField("Directory:", initialDir, 20, FileField.SelectionType.ExistingDirectory);
-        formPanel.add(dirField);
+        if (browseMode == MainWindow.BrowseMode.FILE_SYSTEM) {
+            File initialDir = MainWindow.getInstance().getCurrentDirectory();
+            dirField = new FileField("Directory:", initialDir, 20, FileField.SelectionType.ExistingDirectory);
+            formPanel.add(dirField);
+        }
+        else {
+            ImageSet initialSet = MainWindow.getInstance().getImageSetPanel().getSelectedImageSet().orElse(null);
+            List<String> options = new ArrayList<>(3);
+            if (initialSet != null) {
+                options.add(IMAGE_SET_CURRENT);
+            }
+            options.add(IMAGE_SET_ALL_PERMANENT);
+            options.add(IMAGE_SET_ALL);
+            imageSetField = new ComboField<>("Search:", options, 0);
+            formPanel.add(imageSetField);
+        }
 
         recursiveField = new CheckBoxField("Recursive", true);
         formPanel.add(recursiveField);
@@ -221,6 +226,34 @@ public class SearchDialog extends JDialog {
         TagList searchAny = TagList.of(tagFieldAny.getText());
         TagList searchNone = TagList.of(tagFieldNone.getText());
         return !searchAll.isEmpty() || !searchAny.isEmpty() || !searchNone.isEmpty();
+    }
+
+    private SearchThread createSearchThread() {
+        if (browseMode == MainWindow.BrowseMode.FILE_SYSTEM) {
+            return new SearchThread(dirField.getFile(),
+                                    recursiveField.isChecked(),
+                                    TagList.of(tagFieldAll.getText()),
+                                    TagList.of(tagFieldAny.getText()),
+                                    TagList.of(tagFieldNone.getText()));
+        }
+
+        final MainWindow mw = MainWindow.getInstance();
+        List<ImageSet> imageSetsToSearch;
+        String selectedOption = imageSetField.getSelectedItem();
+        if (IMAGE_SET_CURRENT.equals(selectedOption)) {
+            // We know it can't be null because this option only exists if it isn't:
+            imageSetsToSearch = List.of(mw.getImageSetPanel().getSelectedImageSet().get());
+        }
+        else if (IMAGE_SET_ALL_PERMANENT.equals(selectedOption)) {
+            imageSetsToSearch = mw.getImageSetManager().getImageSets().stream().filter(imageSet -> ! imageSet.isTransient()).toList();
+        }
+        else {
+            imageSetsToSearch = mw.getImageSetManager().getImageSets();
+        }
+        return new SearchThread(imageSetsToSearch,
+                                TagList.of(tagFieldAll.getText()),
+                                TagList.of(tagFieldAny.getText()),
+                                TagList.of(tagFieldNone.getText()));
     }
 
     private MessageUtil getMessageUtil() {
