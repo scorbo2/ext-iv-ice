@@ -22,24 +22,20 @@ public class SearchThread extends MultiProgressWorker {
 
     private static final Logger log = Logger.getLogger(SearchThread.class.getName());
 
-    public enum SearchMode {
-        CONTAINS_ALL,
-        CONTAINS_ANY,
-        CONTAINS_NONE
-    }
-
     private final File initialDir;
-    private final TagList searchTags;
     private final boolean isRecursive;
-    private final SearchMode searchMode;
+    private final TagList searchTagsAll;
+    private final TagList searchTagsAny;
+    private final TagList searchTagsNone;
     private final List<File> searchResults;
     private boolean wasCanceled;
 
-    public SearchThread(File initialDir, TagList tagList, boolean isRecursive, SearchMode searchMode) {
+    public SearchThread(File initialDir, boolean isRecursive, TagList findAll, TagList findAny, TagList findNone) {
         this.initialDir = initialDir;
-        this.searchTags = tagList;
         this.isRecursive = isRecursive;
-        this.searchMode = searchMode;
+        this.searchTagsAll = findAll;
+        this.searchTagsAny = findAny;
+        this.searchTagsNone = findNone;
         searchResults = new ArrayList<>();
         wasCanceled = false;
     }
@@ -54,6 +50,11 @@ public class SearchThread extends MultiProgressWorker {
 
     @Override
     public void run() {
+        // Log the ridiculous case where caller provided no search tags at all:
+        if (searchTagsAll.isEmpty() && searchTagsAny.isEmpty() && searchTagsNone.isEmpty()) {
+            log.warning("ICE SearchThread executed with no search tags! All images will match.");
+        }
+
         fireProgressBegins(1);
         List<File> iceFiles = FileSystemUtil.findFiles(initialDir, isRecursive, "ice");
         searchResults.clear();
@@ -73,23 +74,36 @@ public class SearchThread extends MultiProgressWorker {
 
                 // Give the tag index first crack at it:
                 if (TagIndex.isEnabled() && TagIndex.getInstance().IsIndexedAndUpToDate(imageFile, candidateFile)) {
-                    isMatch = switch (searchMode) {
-                        case CONTAINS_ALL -> TagIndex.getInstance().containsAll(imageFile, searchTags);
-                        case CONTAINS_ANY -> TagIndex.getInstance().containsAny(imageFile, searchTags);
-                        case CONTAINS_NONE -> TagIndex.getInstance().containsNone(imageFile, searchTags);
-                    };
+                    isMatch = true;
+                    if (! searchTagsAll.isEmpty()) {
+                        isMatch = TagIndex.getInstance().containsAll(imageFile, searchTagsAll);
+                    }
+                    if (isMatch && ! searchTagsAny.isEmpty()) {
+                        isMatch = TagIndex.getInstance().containsAny(imageFile, searchTagsAny);
+                    }
+                    if (isMatch && ! searchTagsNone.isEmpty()) {
+                        isMatch = TagIndex.getInstance().containsNone(imageFile, searchTagsNone);
+                    }
                     indexHits++;
                 }
 
                 // If not found in the index or if index is disabled, build a new one:
                 else {
                     TagList tagList = TagList.fromFile(candidateFile);
-                    TagIndex.getInstance().addOrUpdateEntry(imageFile, candidateFile);
-                    isMatch = switch (searchMode) {
-                        case CONTAINS_ALL -> tagList.containsAll(searchTags);
-                        case CONTAINS_ANY -> tagList.containsAny(searchTags);
-                        case CONTAINS_NONE -> tagList.containsNone(searchTags);
-                    };
+                    if (TagIndex.isEnabled()) {
+                        TagIndex.getInstance().addOrUpdateEntry(imageFile, candidateFile);
+                    }
+
+                    isMatch = true;
+                    if (! searchTagsAll.isEmpty()) {
+                        isMatch = tagList.containsAll(searchTagsAll);
+                    }
+                    if (isMatch && ! searchTagsAny.isEmpty()) {
+                        isMatch = tagList.containsAny(searchTagsAny);
+                    }
+                    if (isMatch && ! searchTagsNone.isEmpty()) {
+                        isMatch = tagList.containsNone(searchTagsNone);
+                    }
                     indexMisses++;
                 }
 

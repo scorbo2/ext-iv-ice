@@ -64,6 +64,10 @@ public class TagList {
         return persistenceFile;
     }
 
+    public boolean isEmpty() {
+        return tags.isEmpty();
+    }
+
     public int size() {
         return tags.size();
     }

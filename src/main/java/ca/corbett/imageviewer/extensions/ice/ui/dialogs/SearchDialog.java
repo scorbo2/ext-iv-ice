@@ -9,6 +9,7 @@ import ca.corbett.forms.fields.CheckBoxField;
 import ca.corbett.forms.fields.ComboField;
 import ca.corbett.forms.fields.FileField;
 import ca.corbett.forms.fields.FormField;
+import ca.corbett.forms.fields.LabelField;
 import ca.corbett.forms.fields.LongTextField;
 import ca.corbett.forms.fields.ShortTextField;
 import ca.corbett.forms.validators.FieldValidator;
@@ -36,20 +37,15 @@ public class SearchDialog extends JDialog {
 
     private static final Logger log = Logger.getLogger(SearchDialog.class.getName());
 
-    private static final String[] searchOptions = {
-            "Find images that have ALL of these tags",
-            "Find images that have ANY of these tags",
-            "Find images that have NONE of these tags"
-    };
-
     private MessageUtil messageUtil;
     private final File initialDir;
     private FormPanel formPanel;
     private ShortTextField searchNameField;
     private FileField dirField;
-    private ComboField<String> searchTypeField;
-    private LongTextField tagField;
     private CheckBoxField recursiveField;
+    private ShortTextField tagFieldAll;
+    private ShortTextField tagFieldAny;
+    private ShortTextField tagFieldNone;
 
     public SearchDialog() {
         this("Search", null);
@@ -66,7 +62,7 @@ public class SearchDialog extends JDialog {
     public SearchDialog(String title, File initialDir) {
         super(MainWindow.getInstance(), title, true);
         this.initialDir = initialDir;
-        setSize(new Dimension(600, 440));
+        setSize(new Dimension(630, 400));
         setResizable(false);
         setLocationRelativeTo(MainWindow.getInstance());
         setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
@@ -77,12 +73,11 @@ public class SearchDialog extends JDialog {
 
     private void doSearch() {
         MultiProgressDialog progressDialog = new MultiProgressDialog(this, "Search in progress");
-        SearchThread.SearchMode searchMode = switch (searchTypeField.getSelectedIndex()) {
-            case 0 -> SearchThread.SearchMode.CONTAINS_ALL;
-            case 1 -> SearchThread.SearchMode.CONTAINS_ANY;
-            default -> SearchThread.SearchMode.CONTAINS_NONE;
-        };
-        final SearchThread searchThread = new SearchThread(dirField.getFile(), TagList.of(tagField.getText()), recursiveField.isChecked(), searchMode);
+        final SearchThread searchThread = new SearchThread(dirField.getFile(),
+                                                           recursiveField.isChecked(),
+                                                           TagList.of(tagFieldAll.getText()),
+                                                           TagList.of(tagFieldAny.getText()),
+                                                           TagList.of(tagFieldNone.getText()));
         searchThread.addProgressListener(new MultiProgressAdapter() {
             @Override
             public void progressCanceled() {
@@ -139,19 +134,31 @@ public class SearchDialog extends JDialog {
         });
         formPanel.add(searchNameField);
 
-        dirField = new FileField("Directory:", initialDir, 22, FileField.SelectionType.ExistingDirectory);
+        dirField = new FileField("Directory:", initialDir, 20, FileField.SelectionType.ExistingDirectory);
         formPanel.add(dirField);
 
         recursiveField = new CheckBoxField("Recursive", true);
         formPanel.add(recursiveField);
 
-        tagField = LongTextField.ofFixedSizeMultiLine("Tags:", 3, 31);
-        tagField.setHelpText("Comma-separated.");
-        tagField.setAllowBlank(false);
-        formPanel.add(tagField);
-
-        searchTypeField = new ComboField<>("Search:", List.of(searchOptions), 0);
-        formPanel.add(searchTypeField);
+        LabelField labelField = LabelField.createBoldHeaderLabel("This search should return images that have...", 12);
+        labelField.getMargins().setTop(24);
+        formPanel.add(labelField);
+        tagFieldAll = new ShortTextField("ALL of these tags:", 28);
+        tagFieldAll.setHelpText("Comma-separated.");
+        tagFieldAll.getMargins().setLeft(18);
+        tagFieldAll.addFieldValidator(new TagFieldValidator());
+        formPanel.add(tagFieldAll);
+        tagFieldAny = new ShortTextField("ANY of these tags:", 28);
+        tagFieldAny.setHelpText("Comma-separated.");
+        tagFieldAny.getMargins().setLeft(18);
+        tagFieldAny.addFieldValidator(new TagFieldValidator());
+        formPanel.add(tagFieldAny);
+        tagFieldNone = new ShortTextField("NONE of these tags:", 28);
+        tagFieldNone.setHelpText("Comma-separated.");
+        tagFieldNone.getMargins().setLeft(18);
+        tagFieldNone.addFieldValidator(new TagFieldValidator());
+        formPanel.add(tagFieldNone);
+        formPanel.add(LabelField.createPlainHeaderLabel("(fill in at least one)"));
 
         return formPanel;
     }
@@ -209,10 +216,27 @@ public class SearchDialog extends JDialog {
         return buttonPanel;
     }
 
+    private boolean isAtLeastOneTagFieldFilled() {
+        TagList searchAll = TagList.of(tagFieldAll.getText());
+        TagList searchAny = TagList.of(tagFieldAny.getText());
+        TagList searchNone = TagList.of(tagFieldNone.getText());
+        return !searchAll.isEmpty() || !searchAny.isEmpty() || !searchNone.isEmpty();
+    }
+
     private MessageUtil getMessageUtil() {
         if (messageUtil == null) {
             messageUtil = new MessageUtil(this, log);
         }
         return messageUtil;
+    }
+
+    private class TagFieldValidator implements FieldValidator<ShortTextField> {
+
+        @Override
+        public ValidationResult validate(ShortTextField fieldToValidate) {
+            return isAtLeastOneTagFieldFilled()
+                    ? ValidationResult.valid()
+                    : ValidationResult.invalid("At least one tag field must be filled.");
+        }
     }
 }
