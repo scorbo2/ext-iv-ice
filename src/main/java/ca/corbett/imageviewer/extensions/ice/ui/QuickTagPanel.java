@@ -1,7 +1,6 @@
 package ca.corbett.imageviewer.extensions.ice.ui;
 
 import ca.corbett.extras.LookAndFeelManager;
-import ca.corbett.extras.image.ImageUtil;
 import ca.corbett.extras.io.FileSystemUtil;
 import ca.corbett.extras.properties.ComboProperty;
 import ca.corbett.extras.properties.IntegerProperty;
@@ -24,16 +23,22 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -46,9 +51,13 @@ public class QuickTagPanel extends JPanel {
 
     private final File tagDir;
     private int panelWidth;
-    private BufferedImage iconAddTag;
-    private BufferedImage iconEditTagGroup;
-    private BufferedImage iconRemoveTagGroup;
+    private static BufferedImage iconAddTag;
+    private static BufferedImage iconEditTagGroup;
+    private static BufferedImage iconRemoveTagGroup;
+    private static BufferedImage iconExpand;
+    private static BufferedImage iconContract;
+
+    private final Map<String, Boolean> isExpandedMap = new HashMap<>();
 
     public QuickTagPanel() {
         setLayout(new GridBagLayout());
@@ -56,13 +65,17 @@ public class QuickTagPanel extends JPanel {
         if (!tagDir.exists()) {
             tagDir.mkdirs();
         }
-        try {
-            iconAddTag = ImageSetPanel.loadIconImage("icon-plus.png");
-            iconEditTagGroup = ImageSetPanel.loadIconImage("icon-document-edit.png");
-            iconRemoveTagGroup = ImageSetPanel.loadIconImage("icon-x.png");
-        }
-        catch (IOException ioe) {
-            log.log(Level.SEVERE, "QuickTagPanel: error loading icon images: "+ioe.getMessage(), ioe);
+        if (iconAddTag == null) { // only load these once
+            try {
+                iconAddTag = ImageSetPanel.loadIconImage("icon-plus.png");
+                iconEditTagGroup = ImageSetPanel.loadIconImage("icon-document-edit.png");
+                iconRemoveTagGroup = ImageSetPanel.loadIconImage("icon-x.png");
+                iconExpand = ImageSetPanel.loadIconImage("icon-zoom-in2.png");
+                iconContract = ImageSetPanel.loadIconImage("icon-zoom-out2.png");
+            }
+            catch (IOException ioe) {
+                log.log(Level.SEVERE, "QuickTagPanel: error loading icon images: " + ioe.getMessage(), ioe);
+            }
         }
         reset();
     }
@@ -77,18 +90,33 @@ public class QuickTagPanel extends JPanel {
         List<File> tagFiles = FileSystemUtil.findFiles(tagDir, false, "json");
         int rowNumber = 1;
         for (File tagFile : tagFiles) {
-            addLabel(tagFile.getName().replace(".json", ""), rowNumber++);
-            TagList list = TagList.fromFile(tagFile);
-            for (String tag : list.getTags()) {
-                addButton(createTagButton(tag), rowNumber++);
+            String groupName = tagFile.getName().replace(".json", "");
+            addLabel(groupName, rowNumber++);
+            if (Boolean.TRUE.equals(isExpandedMap.get(groupName))) {
+                TagList list = TagList.fromFile(tagFile);
+                for (String tag : list.getTags()) {
+                    addButton(createTagButton(tag), rowNumber++);
+                }
+                addGroupEditButtons(list, rowNumber++);
             }
-            addGroupEditButtons(list, rowNumber++);
         }
 
-        addLabel("Quick tag options", rowNumber++);
+        addNonExpandableLabel("Quick tag options", rowNumber++);
         addNewGroupButton(rowNumber++);
         addHidePanelButton(rowNumber++);
         addBottomSpacer(rowNumber);
+
+        // Swing wonkiness... adding or removing stuff from a container sometimes needs a kick
+        // in the pants before the change actually shows up.
+        final JPanel thisPanel = this;
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                thisPanel.invalidate();
+                thisPanel.revalidate();
+                thisPanel.repaint();
+            }
+        });
     }
 
     private void executeTagAction(String tag) {
@@ -109,7 +137,7 @@ public class QuickTagPanel extends JPanel {
         }
     }
 
-    private void addLabel(String text, int row) {
+    private void addNonExpandableLabel(String text, int row) {
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridwidth = 3;
         gbc.gridy = row;
@@ -124,6 +152,25 @@ public class QuickTagPanel extends JPanel {
         label.setBackground(LookAndFeelManager.getLafColor("TextArea.selectionBackground", Color.BLUE));
         label.setForeground(LookAndFeelManager.getLafColor("TextArea.selectionForeground", Color.WHITE));
         add(label, gbc);
+    }
+
+    private void addLabel(String text, int row) {
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridwidth = 3;
+        gbc.gridy = row;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.insets = new Insets(12,SideMargin,0,SideMargin);
+        final HeaderLabel headerLabel = new HeaderLabel(text, panelWidth);
+        headerLabel.addButtonListener(e -> {
+            isExpandedMap.put(text, !headerLabel.isExpanded());
+            reset();
+        });
+        isExpandedMap.putIfAbsent(text, true);
+        if (Boolean.FALSE.equals(isExpandedMap.get(text))) {
+            headerLabel.setExpanded(false);
+        }
+        add(headerLabel, gbc);
     }
 
     private void addSpacer(int row) {
@@ -266,6 +313,57 @@ public class QuickTagPanel extends JPanel {
             list.add(input);
             list.save();
             reset();
+        }
+    }
+
+    private static class HeaderLabel extends JPanel {
+        private final String labelText;
+        private JButton btnExpander;
+        private boolean isExpanded;
+
+        public HeaderLabel(String labelText, int panelWidth) {
+            super(new BorderLayout());
+            this.labelText = labelText;
+            JLabel label = new JLabel(" " + labelText);
+            label.setVerticalAlignment(SwingConstants.CENTER);
+            label.setPreferredSize(new Dimension(panelWidth,RowHeight));
+            label.setFont(label.getFont().deriveFont(Font.BOLD, 14f));
+            label.setOpaque(true);
+            label.setBackground(LookAndFeelManager.getLafColor("TextArea.selectionBackground", Color.BLUE));
+            label.setForeground(LookAndFeelManager.getLafColor("TextArea.selectionForeground", Color.WHITE));
+            add(label, BorderLayout.CENTER);
+
+            btnExpander = new JButton(new ImageIcon(iconContract));
+            btnExpander.setPreferredSize(new Dimension(RowHeight, RowHeight));
+            btnExpander.setBorder(null);
+            btnExpander.setBackground(LookAndFeelManager.getLafColor("TextArea.selectionBackground", Color.BLUE));
+            isExpanded = true;
+            add(btnExpander, BorderLayout.EAST);
+        }
+
+        public boolean isExpanded() {
+            return isExpanded;
+        }
+
+        public void setExpanded(boolean isExpanded) {
+            if (this.isExpanded == isExpanded) {
+                return; // ignore no-op
+            }
+            this.isExpanded = isExpanded;
+            if (isExpanded) {
+                btnExpander.setIcon(new ImageIcon(iconContract));
+            }
+            else {
+                btnExpander.setIcon(new ImageIcon(iconExpand));
+            }
+        }
+
+        public String getLabelText() {
+            return labelText;
+        }
+
+        public void addButtonListener(ActionListener listener) {
+            btnExpander.addActionListener(listener);
         }
     }
 }
