@@ -46,8 +46,8 @@ public class QuickTagPanel extends JPanel {
 
     private static final Logger log = Logger.getLogger(QuickTagPanel.class.getName());
 
-    private static final int SideMargin = 12;
-    private static final int RowHeight = 25;
+    public static final int SideMargin = 16;
+    public static final int RowHeight = 25;
 
     private final File tagDir;
     private int panelWidth;
@@ -204,6 +204,7 @@ public class QuickTagPanel extends JPanel {
         gbc.gridwidth = 1;
         gbc.gridy = row;
         gbc.gridx = 0;
+        gbc.weightx = 0.333;
         gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.BOTH;
         gbc.insets = new Insets(0, SideMargin, 12, 0);
@@ -251,6 +252,7 @@ public class QuickTagPanel extends JPanel {
         gbc.gridy = row;
         gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.BOTH;
+        gbc.insets = new Insets(SideMargin, 0,0,0);
         gbc.weighty = 2;
         JLabel label = new JLabel("");
         add(label, gbc);

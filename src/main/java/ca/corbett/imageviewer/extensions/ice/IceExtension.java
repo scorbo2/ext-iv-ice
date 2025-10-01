@@ -34,6 +34,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.FlowLayout;
+import java.awt.Toolkit;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
@@ -144,7 +145,10 @@ public class IceExtension extends ImageViewerExtension {
         if (position == getQuickTagPositionFromConfig()) {
             QuickTagPanel panel = new QuickTagPanel(); // create a new one on each request
             quickTagPanels.add(panel);
-            return new JScrollPane(panel);
+            JScrollPane scrollPane = new JScrollPane(panel);
+            scrollPane.getVerticalScrollBar().setUnitIncrement(10);
+            scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+            return scrollPane;
         }
 
         return null;
