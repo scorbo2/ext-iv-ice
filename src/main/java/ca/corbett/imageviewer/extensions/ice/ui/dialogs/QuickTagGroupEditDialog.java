@@ -93,6 +93,7 @@ public class QuickTagGroupEditDialog extends JDialog {
 
         nameField = new ShortTextField("Group name:", 20);
         nameField.setText(originalGroupName);
+        nameField.setAllowBlank(false);
         nameField.addFieldValidator(new NameFieldValidator(tagList.getPersistenceFile()));
         formPanel.add(nameField);
 
