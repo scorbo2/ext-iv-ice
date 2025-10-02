@@ -53,7 +53,7 @@ public class QuickTagSourceDialog extends JDialog {
         super(MainWindow.getInstance(), dialogTitle, true);
         this.originalSourceName = currentSourceName;
         this.rootDir = new File(Version.SETTINGS_DIR, "quickTags");
-        setSize(new Dimension(400, 250));
+        setSize(new Dimension(450, 150));
         setResizable(false);
         setLocationRelativeTo(MainWindow.getInstance());
         setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
@@ -179,36 +179,8 @@ public class QuickTagSourceDialog extends JDialog {
             }
         }
         sourceCombo = new ComboField<>("Source:", sources, selectedIndex);
+        sourceCombo.getFieldComponent().setPreferredSize(new Dimension(290, 25));
         formPanel.add(sourceCombo);
-
-        PanelField buttonGroup = new PanelField(new FlowLayout(FlowLayout.LEFT));
-        JButton button = new JButton("Create");
-        button.setPreferredSize(new Dimension(110, 25));
-        buttonGroup.getMargins().setBottom(0);
-        buttonGroup.getMargins().setLeft(32);
-        buttonGroup.getPanel().add(button);
-        button.addActionListener(e -> createSource());
-        formPanel.add(buttonGroup);
-
-        buttonGroup = new PanelField(new FlowLayout(FlowLayout.LEFT));
-        button = new JButton("Duplicate");
-        button.setPreferredSize(new Dimension(110, 25));
-        buttonGroup.getMargins().setBottom(0);
-        buttonGroup.getMargins().setTop(0);
-        buttonGroup.getMargins().setLeft(32);
-        buttonGroup.getPanel().add(button);
-        button.addActionListener(e -> duplicateSource());
-        formPanel.add(buttonGroup);
-
-        buttonGroup = new PanelField(new FlowLayout(FlowLayout.LEFT));
-        button = new JButton("Delete");
-        button.setPreferredSize(new Dimension(110, 25));
-        buttonGroup.getMargins().setTop(0);
-        buttonGroup.getMargins().setBottom(0);
-        buttonGroup.getMargins().setLeft(32);
-        buttonGroup.getPanel().add(button);
-        button.addActionListener(e -> deleteSource());
-        formPanel.add(buttonGroup);
 
         return formPanel;
     }
@@ -217,8 +189,23 @@ public class QuickTagSourceDialog extends JDialog {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         panel.setBorder(BorderFactory.createRaisedBevelBorder());
 
-        JButton button = new JButton("OK");
-        button.setPreferredSize(new Dimension(90,23));
+        JButton button = new JButton("Create");
+        button.setPreferredSize(new Dimension(95, 25));
+        button.addActionListener(e -> createSource());
+        panel.add(button);
+
+        button = new JButton("Duplicate");
+        button.setPreferredSize(new Dimension(95, 25));
+        button.addActionListener(e -> duplicateSource());
+        panel.add(button);
+
+        button = new JButton("Delete");
+        button.setPreferredSize(new Dimension(95, 25));
+        button.addActionListener(e -> deleteSource());
+        panel.add(button);
+
+        button = new JButton("OK");
+        button.setPreferredSize(new Dimension(95,25));
         button.addActionListener(actionEvent -> close(true));
         panel.add(button);
 
