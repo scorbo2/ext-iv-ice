@@ -1,17 +1,21 @@
 package ca.corbett.imageviewer.extensions.ice.ui.dialogs;
 
-import ca.corbett.extras.image.ImageUtil;
 import ca.corbett.forms.Alignment;
 import ca.corbett.forms.FormPanel;
 import ca.corbett.forms.fields.FormField;
 import ca.corbett.forms.fields.LabelField;
 import ca.corbett.forms.fields.ListField;
 import ca.corbett.forms.fields.PanelField;
+import ca.corbett.forms.fields.ShortTextField;
+import ca.corbett.forms.validators.FieldValidator;
+import ca.corbett.forms.validators.ValidationResult;
+import ca.corbett.imageviewer.extensions.ice.IceExtension;
 import ca.corbett.imageviewer.extensions.ice.TagList;
 import ca.corbett.imageviewer.ui.MainWindow;
 
 import javax.swing.AbstractAction;
 import javax.swing.ActionMap;
+import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
 import javax.swing.DropMode;
 import javax.swing.InputMap;
@@ -31,28 +35,34 @@ import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.event.ActionEvent;
-import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.List;
 
 /**
- * Provides a dialog for viewing and editing the contents of a TagList, with options
+ * Provides a dialog for viewing and editing the contents of a quick tag group, with options
  * to add, remove, and reorder the list of tags.
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
-public class TagListEditDialog extends JDialog {
+public class QuickTagGroupEditDialog extends JDialog {
 
     private final TagList tagList;
     private final TagList modifiedTagList;
+    private final String originalGroupName;
+    private String modifiedGroupName;
     private boolean wasOkayed = false;
+    private FormPanel formPanel;
+    private ShortTextField nameField;
     private ListField<String> listField;
 
-    public TagListEditDialog(String title, TagList tagList) {
-        super(MainWindow.getInstance(), title, true);
+    public QuickTagGroupEditDialog(String dialogTitle, String groupName, TagList tagList) {
+        super(MainWindow.getInstance(), dialogTitle, true);
         this.tagList = tagList;
-        setSize(new Dimension(660, 540));
+        this.originalGroupName = groupName;
+        modifiedGroupName = groupName;
+        setSize(new Dimension(660, 430));
         setResizable(false);
         setLocationRelativeTo(MainWindow.getInstance());
         setLayout(new BorderLayout());
@@ -69,11 +79,23 @@ public class TagListEditDialog extends JDialog {
         return modifiedTagList;
     }
 
+    public boolean groupWasRenamed() {
+        return ! originalGroupName.equals(modifiedGroupName);
+    }
+
+    public String getModifiedGroupName() {
+        return modifiedGroupName;
+    }
+
     private JComponent buildFormPanel() {
-        FormPanel formPanel = new FormPanel(Alignment.TOP_LEFT);
+        formPanel = new FormPanel(Alignment.TOP_LEFT);
         formPanel.setBorderMargin(12);
 
-        formPanel.add(LabelField.createBoldHeaderLabel("Edit tag list"));
+        nameField = new ShortTextField("Group name:", 20);
+        nameField.setText(originalGroupName);
+        nameField.addFieldValidator(new NameFieldValidator(tagList.getPersistenceFile()));
+        formPanel.add(nameField);
+
         formPanel.add(LabelField.createPlainHeaderLabel("Drag+drop or ctrl+up/ctrl+down to reorder, DEL to remove"));
         listField = new ListField<>("", tagList.getTags());
         listField.setVisibleRowCount(10);
@@ -92,6 +114,7 @@ public class TagListEditDialog extends JDialog {
 
     private JComponent buildButtonPanel() {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        panel.setBorder(BorderFactory.createRaisedBevelBorder());
 
         JButton button = new JButton("OK");
         button.setPreferredSize(new Dimension(90,23));
@@ -190,14 +213,24 @@ public class TagListEditDialog extends JDialog {
     }
 
     private void close(boolean okay) {
-        wasOkayed = okay;
-        modifiedTagList.clear();
-        if (wasOkayed) {
+        if (okay) {
+            if (! formPanel.isFormValid()) {
+                return;
+            }
             DefaultListModel<String> listModel = (DefaultListModel<String>)listField.getListModel();
+            modifiedTagList.clear();
             for (int i = 0; i < listModel.getSize(); i++) {
                 modifiedTagList.add(listModel.getElementAt(i));
             }
+            modifiedGroupName = nameField.getText();
         }
+
+        else { // cancel
+            modifiedTagList.clear();
+            modifiedGroupName = originalGroupName;
+        }
+
+        wasOkayed = okay;
         dispose();
     }
 
@@ -386,6 +419,29 @@ public class TagListEditDialog extends JDialog {
                 throw new UnsupportedFlavorException(flavor);
             }
             return value;
+        }
+    }
+
+    private static class NameFieldValidator implements FieldValidator<ShortTextField> {
+
+        private final File targetDirectory;
+        private final File sourceFile;
+
+        public NameFieldValidator(File sourceFile) {
+            this.sourceFile = sourceFile;
+            this.targetDirectory = sourceFile.getParentFile();
+        }
+
+        @Override
+        public ValidationResult validate(ShortTextField fieldToValidate) {
+            String filename = fieldToValidate.getText() + ".json";
+            File candidateFile = new File(targetDirectory, filename);
+            if (! candidateFile.getName().equals(sourceFile.getName()) && candidateFile.exists()) {
+                return ValidationResult.invalid("A group with that name already exists.");
+            }
+            else {
+                return ValidationResult.valid();
+            }
         }
     }
 }

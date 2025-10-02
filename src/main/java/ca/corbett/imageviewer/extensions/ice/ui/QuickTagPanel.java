@@ -10,7 +10,7 @@ import ca.corbett.imageviewer.extensions.ImageViewerExtensionManager;
 import ca.corbett.imageviewer.extensions.ice.IceExtension;
 import ca.corbett.imageviewer.extensions.ice.TagIndex;
 import ca.corbett.imageviewer.extensions.ice.TagList;
-import ca.corbett.imageviewer.extensions.ice.ui.dialogs.TagListEditDialog;
+import ca.corbett.imageviewer.extensions.ice.ui.dialogs.QuickTagGroupEditDialog;
 import ca.corbett.imageviewer.ui.ImageInstance;
 import ca.corbett.imageviewer.ui.MainWindow;
 import ca.corbett.imageviewer.ui.actions.ReloadUIAction;
@@ -31,7 +31,6 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -97,7 +96,7 @@ public class QuickTagPanel extends JPanel {
                 for (String tag : list.getTags()) {
                     addButton(createTagButton(tag), rowNumber++);
                 }
-                addGroupEditButtons(list, rowNumber++);
+                addGroupEditButtons(groupName, list, rowNumber++);
             }
         }
 
@@ -195,7 +194,7 @@ public class QuickTagPanel extends JPanel {
         add(button, gbc);
     }
 
-    private void addGroupEditButtons(TagList list, int row) {
+    private void addGroupEditButtons(String groupName, TagList list, int row) {
         JButton button = createButton("");
         button.setIcon(new ImageIcon(iconAddTag, "Add tag"));
         button.setPreferredSize(new Dimension(panelWidth/3, RowHeight));
@@ -213,7 +212,7 @@ public class QuickTagPanel extends JPanel {
         button = createButton("");
         button.setIcon(new ImageIcon(iconEditTagGroup, "Edit tag group"));
         button.setPreferredSize(new Dimension(panelWidth/3, RowHeight));
-        button.addActionListener(e -> editTagGroup(list));
+        button.addActionListener(e -> editTagGroup(groupName, list));
         gbc.gridx = 1;
         gbc.insets = new Insets(0, 0, 12, 0);
         add(button, gbc);
@@ -270,12 +269,23 @@ public class QuickTagPanel extends JPanel {
         return button;
     }
 
-    private void editTagGroup(TagList list) {
-        TagListEditDialog dialog = new TagListEditDialog("Edit quick tag group", list);
+    private void editTagGroup(String groupName, TagList list) {
+        QuickTagGroupEditDialog dialog = new QuickTagGroupEditDialog("Edit quick tag group", groupName, list);
         dialog.setVisible(true);
         if (dialog.wasOkayed()) {
             list.clear();
             list.addAll(dialog.getModifiedTagList());
+
+            // The user may have renamed this tag list, in which case we have to update the save location:
+            if (dialog.groupWasRenamed()) {
+                File originalFile = list.getPersistenceFile();
+                File target = new File(list.getPersistenceFile().getParentFile(), dialog.getModifiedGroupName() + ".json");
+                list.setPersistenceFile(target);
+
+                // Also remove the old one:
+                originalFile.delete();
+            }
+
             list.save();
             reset();
         }
