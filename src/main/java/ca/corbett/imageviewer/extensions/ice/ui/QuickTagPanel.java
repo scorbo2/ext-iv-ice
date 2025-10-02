@@ -215,6 +215,7 @@ public class QuickTagPanel extends JPanel {
     private void addGroupEditButtons(String groupName, TagList list, int row) {
         JButton button = createButton("");
         button.setIcon(new ImageIcon(iconAddTag, "Add tag"));
+        button.setToolTipText("Add tag");
         button.setPreferredSize(new Dimension(panelWidth/3, RowHeight));
         button.addActionListener(e -> addNewTag(list));
         GridBagConstraints gbc = new GridBagConstraints();
@@ -229,6 +230,7 @@ public class QuickTagPanel extends JPanel {
 
         button = createButton("");
         button.setIcon(new ImageIcon(iconEditTagGroup, "Edit tag group"));
+        button.setToolTipText("Edit this tag group");
         button.setPreferredSize(new Dimension(panelWidth/3, RowHeight));
         button.addActionListener(e -> editTagGroup(groupName, list));
         gbc.gridx = 1;
@@ -237,6 +239,7 @@ public class QuickTagPanel extends JPanel {
 
         button = createButton("");
         button.setIcon(new ImageIcon(iconRemoveTagGroup, "Remove tag group"));
+        button.setToolTipText("Remove this tag group");
         button.setPreferredSize(new Dimension(panelWidth/3, RowHeight));
         button.addActionListener(e -> removeTagGroup(list));
         gbc.gridx = 2;
