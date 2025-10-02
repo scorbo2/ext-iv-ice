@@ -9,8 +9,8 @@ import ca.corbett.forms.fields.PanelField;
 import ca.corbett.forms.fields.ShortTextField;
 import ca.corbett.forms.validators.FieldValidator;
 import ca.corbett.forms.validators.ValidationResult;
-import ca.corbett.imageviewer.extensions.ice.IceExtension;
 import ca.corbett.imageviewer.extensions.ice.TagList;
+import ca.corbett.imageviewer.extensions.ice.ui.QuickTagPanel;
 import ca.corbett.imageviewer.ui.MainWindow;
 
 import javax.swing.AbstractAction;
@@ -65,6 +65,7 @@ public class QuickTagGroupEditDialog extends JDialog {
         setSize(new Dimension(660, 430));
         setResizable(false);
         setLocationRelativeTo(MainWindow.getInstance());
+        setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         setLayout(new BorderLayout());
         modifiedTagList = new TagList();
         add(buildFormPanel(), BorderLayout.CENTER);
@@ -94,7 +95,7 @@ public class QuickTagGroupEditDialog extends JDialog {
         nameField = new ShortTextField("Group name:", 20);
         nameField.setText(originalGroupName);
         nameField.setAllowBlank(false);
-        nameField.addFieldValidator(new NameFieldValidator(tagList.getPersistenceFile()));
+        nameField.addFieldValidator(new NameFieldValidator(tagList.getPersistenceFile(), originalGroupName));
         formPanel.add(nameField);
 
         formPanel.add(LabelField.createPlainHeaderLabel("Drag+drop or ctrl+up/ctrl+down to reorder, DEL to remove"));
@@ -426,23 +427,30 @@ public class QuickTagGroupEditDialog extends JDialog {
     private static class NameFieldValidator implements FieldValidator<ShortTextField> {
 
         private final File targetDirectory;
-        private final File sourceFile;
+        private final String originalName;
 
-        public NameFieldValidator(File sourceFile) {
-            this.sourceFile = sourceFile;
+        public NameFieldValidator(File sourceFile, String originalName) {
             this.targetDirectory = sourceFile.getParentFile();
+            this.originalName = originalName;
         }
 
         @Override
         public ValidationResult validate(ShortTextField fieldToValidate) {
-            String filename = fieldToValidate.getText() + ".json";
-            File candidateFile = new File(targetDirectory, filename);
-            if (! candidateFile.getName().equals(sourceFile.getName()) && candidateFile.exists()) {
-                return ValidationResult.invalid("A group with that name already exists.");
-            }
-            else {
+            boolean isModified = ! originalName.equals(fieldToValidate.getText());
+            if (! isModified) {
                 return ValidationResult.valid();
             }
+
+            // Reject reserved name:
+            if (QuickTagPanel.DEFAULT_SOURCE_NAME.equals(fieldToValidate.getText())) {
+                return ValidationResult.invalid("You cannot use this name.");
+            }
+
+            String filename = fieldToValidate.getText() + ".json";
+            File candidateFile = new File(targetDirectory, filename);
+            return candidateFile.exists()
+                    ? ValidationResult.invalid("A group with that name already exists.")
+                    : ValidationResult.valid();
         }
     }
 }

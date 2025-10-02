@@ -9,6 +9,7 @@ import ca.corbett.extras.properties.BooleanProperty;
 import ca.corbett.extras.properties.ComboProperty;
 import ca.corbett.extras.properties.IntegerProperty;
 import ca.corbett.extras.properties.PropertiesManager;
+import ca.corbett.extras.properties.ShortTextProperty;
 import ca.corbett.imageviewer.AppConfig;
 import ca.corbett.imageviewer.ImageOperation;
 import ca.corbett.imageviewer.extensions.ImageViewerExtension;
@@ -67,6 +68,7 @@ public class IceExtension extends ImageViewerExtension {
     public static final String quickTagPanelPositionProp = "ICE.General.quickTagPanelPosition";
     public static final String quickTagPanelWidthProp = "ICE.General.quickTagPanelWidth";
     public static final String fontSizeProp = "Thumbnails.Companion files.linkFontSize";
+    public static final String quickTagSourceProp = "Hidden.quickTags.source";
 
     private final List<TagPreviewPanel> tagPreviewPanels = new ArrayList<>();
     private final List<QuickTagPanel> quickTagPanels = new ArrayList<>();
@@ -93,6 +95,7 @@ public class IceExtension extends ImageViewerExtension {
         list.add(new IntegerProperty(quickTagPanelWidthProp, "Quick tag panel width:", 200, 120, 300, 10));
         list.add(new IntegerProperty(fontSizeProp, "Hyperlink font size", 10, 8, 16, 1));
         list.add(new BooleanProperty(TagIndex.PROP_NAME, "Enable tag index for faster searches", true));
+        list.add(new ShortTextProperty(quickTagSourceProp, "quickTagsSource", QuickTagPanel.DEFAULT_SOURCE_NAME).setExposed(false));
         return list;
     }
 

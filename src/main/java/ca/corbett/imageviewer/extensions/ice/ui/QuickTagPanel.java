@@ -4,6 +4,7 @@ import ca.corbett.extras.LookAndFeelManager;
 import ca.corbett.extras.io.FileSystemUtil;
 import ca.corbett.extras.properties.ComboProperty;
 import ca.corbett.extras.properties.IntegerProperty;
+import ca.corbett.extras.properties.ShortTextProperty;
 import ca.corbett.imageviewer.AppConfig;
 import ca.corbett.imageviewer.Version;
 import ca.corbett.imageviewer.extensions.ImageViewerExtensionManager;
@@ -11,6 +12,7 @@ import ca.corbett.imageviewer.extensions.ice.IceExtension;
 import ca.corbett.imageviewer.extensions.ice.TagIndex;
 import ca.corbett.imageviewer.extensions.ice.TagList;
 import ca.corbett.imageviewer.extensions.ice.ui.dialogs.QuickTagGroupEditDialog;
+import ca.corbett.imageviewer.extensions.ice.ui.dialogs.QuickTagSourceDialog;
 import ca.corbett.imageviewer.ui.ImageInstance;
 import ca.corbett.imageviewer.ui.MainWindow;
 import ca.corbett.imageviewer.ui.actions.ReloadUIAction;
@@ -45,10 +47,13 @@ public class QuickTagPanel extends JPanel {
 
     private static final Logger log = Logger.getLogger(QuickTagPanel.class.getName());
 
+    public static final String DEFAULT_SOURCE_NAME = "(default)";
+
     public static final int SideMargin = 16;
     public static final int RowHeight = 25;
 
-    private final File tagDir;
+    private final File sourceRootDir;
+    private File sourceDir;
     private int panelWidth;
     private static BufferedImage iconAddTag;
     private static BufferedImage iconEditTagGroup;
@@ -56,13 +61,14 @@ public class QuickTagPanel extends JPanel {
     private static BufferedImage iconExpand;
     private static BufferedImage iconContract;
 
+    private static String currentSource;
     private final Map<String, Boolean> isExpandedMap = new HashMap<>();
 
     public QuickTagPanel() {
         setLayout(new GridBagLayout());
-        tagDir = new File(Version.SETTINGS_DIR, "quickTags");
-        if (!tagDir.exists()) {
-            tagDir.mkdirs();
+        sourceRootDir = new File(Version.SETTINGS_DIR, "quickTags");
+        if (!sourceRootDir.exists()) {
+            sourceRootDir.mkdirs();
         }
         if (iconAddTag == null) { // only load these once
             try {
@@ -79,14 +85,25 @@ public class QuickTagPanel extends JPanel {
         reset();
     }
 
+    public String getSource() {
+        return currentSource;
+    }
+
     public void reset() {
+        currentSource = getSourceFromProperties();
+        sourceDir = DEFAULT_SOURCE_NAME.equals(currentSource)
+                ? sourceRootDir
+                : new File(sourceRootDir, currentSource);
+        if (!sourceDir.exists()) {
+            sourceDir.mkdirs();
+        }
         IntegerProperty prop = (IntegerProperty)AppConfig
                 .getInstance()
                 .getPropertiesManager()
                 .getProperty(IceExtension.quickTagPanelWidthProp);
         panelWidth = prop == null ? 200 : prop.getValue();
         removeAll();
-        List<File> tagFiles = FileSystemUtil.findFiles(tagDir, false, "json");
+        List<File> tagFiles = FileSystemUtil.findFiles(sourceDir, false, "json");
         int rowNumber = 1;
         for (File tagFile : tagFiles) {
             String groupName = tagFile.getName().replace(".json", "");
@@ -102,6 +119,7 @@ public class QuickTagPanel extends JPanel {
 
         addNonExpandableLabel("Quick tag options", rowNumber++);
         addNewGroupButton(rowNumber++);
+        addSourcesButton(rowNumber++);
         addHidePanelButton(rowNumber++);
         addBottomSpacer(rowNumber);
 
@@ -232,6 +250,12 @@ public class QuickTagPanel extends JPanel {
         addButton(button, row);
     }
 
+    private void addSourcesButton(int row) {
+        JButton button = createButton("Quick tag source");
+        button.addActionListener(e -> selectSource());
+        addButton(button, row);
+    }
+
     private void removeTagGroup(TagList list) {
         if (JOptionPane.showConfirmDialog(MainWindow.getInstance(), "Really remove this tag group?") == JOptionPane.YES_OPTION) {
             list.getPersistenceFile().delete();
@@ -308,7 +332,7 @@ public class QuickTagPanel extends JPanel {
     private void addNewGroup() {
         String name = JOptionPane.showInputDialog(MainWindow.getInstance(), "Enter new group name:");
         if (name != null) {
-            File tagFile = new File(tagDir, name + ".json");
+            File tagFile = new File(sourceDir, name + ".json");
             if (tagFile.exists()) {
                 MainWindow.getInstance().showMessageDialog("Name in use", "There is already a group with that name.");
                 return;
@@ -316,6 +340,19 @@ public class QuickTagPanel extends JPanel {
             TagList newList = TagList.fromFile(tagFile);
             newList.save(); // create the empty file
             reset(); // reload everything
+        }
+    }
+
+    private void selectSource() {
+        QuickTagSourceDialog dialog = new QuickTagSourceDialog("Quick tag source", currentSource);
+        dialog.setVisible(true);
+        if (dialog.wasOkayed()) {
+            if (dialog.wasSourceChanged()) {
+                log.info("You changed the source! "+dialog.getSelectedSourceName());
+                currentSource = dialog.getSelectedSourceName();
+                setSourceInProperties(currentSource);
+                reset();
+            }
         }
     }
 
@@ -377,5 +414,24 @@ public class QuickTagPanel extends JPanel {
         public void addButtonListener(ActionListener listener) {
             btnExpander.addActionListener(listener);
         }
+    }
+
+    private void setSourceInProperties(String source) {
+        ShortTextProperty prop = (ShortTextProperty)AppConfig.getInstance().getPropertiesManager().getProperty(IceExtension.quickTagSourceProp);
+        if (prop == null) {
+            log.warning("QuickTagPanel: Unable to find source property, unable to save source preference.");
+            return;
+        }
+        prop.setValue(source);
+        AppConfig.getInstance().save();
+    }
+
+    private String getSourceFromProperties() {
+        ShortTextProperty prop = (ShortTextProperty)AppConfig.getInstance().getPropertiesManager().getProperty(IceExtension.quickTagSourceProp);
+        if (prop == null) {
+            log.warning("QuickTagPanel: Unable to find source property, reverting to default source.");
+            return DEFAULT_SOURCE_NAME;
+        }
+        return prop.getValue();
     }
 }
