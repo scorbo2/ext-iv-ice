@@ -3,7 +3,6 @@ package ca.corbett.imageviewer.extensions.ice;
 import ca.corbett.extensions.AppExtensionInfo;
 import ca.corbett.extras.LookAndFeelManager;
 import ca.corbett.extras.RedispatchingMouseAdapter;
-import ca.corbett.extras.image.ImageUtil;
 import ca.corbett.extras.properties.AbstractProperty;
 import ca.corbett.extras.properties.BooleanProperty;
 import ca.corbett.extras.properties.ComboProperty;
@@ -35,18 +34,28 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.FlowLayout;
-import java.awt.Toolkit;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
-import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * This is an extension for ImageViewer that provides the ability to "tag" images
+ * with short text strings, and then search for images based on those tags.
+ * This extension makes heavy use of the new Image Set functionality provided
+ * by the ImageViewer 2.2 release.
+ * <p>
+ *     This extension is a ground-up rewrite of some of the functionality from
+ *     the original ICE (Image Classification Engine) application from 2012.
+ *     Now in ImageViewer extension form!
+ * </p>
+ *
+ * @author <a href="https://github.com/scorbo2">scorbo2</a>
+ */
 public class IceExtension extends ImageViewerExtension {
 
     private static final Logger log = Logger.getLogger(IceExtension.class.getName());
@@ -85,6 +94,10 @@ public class IceExtension extends ImageViewerExtension {
         return extInfo;
     }
 
+    /**
+     * Returns all the config properties that this extension will use.
+     * The parent application will add these to the application config dialog.
+     */
     @Override
     protected List<AbstractProperty> createConfigProperties() {
         List<AbstractProperty> list = new ArrayList<>();
@@ -109,6 +122,11 @@ public class IceExtension extends ImageViewerExtension {
         TagIndex.getInstance().save();
     }
 
+    /**
+     * Returns the currently-configured position of our tag preview panel.
+     * The available options are Top (above the main image), Bottom (below
+     * the main image), or null, meaning that the tag preview panel is hidden.
+     */
     private ExtraPanelPosition getTagPreviewPositionFromConfig() {
         PropertiesManager propsManager = AppConfig.getInstance().getPropertiesManager();
         //noinspection unchecked
@@ -123,6 +141,11 @@ public class IceExtension extends ImageViewerExtension {
         return null;
     }
 
+    /**
+     * Returns the currently-configured position of our quick tag panel.
+     * The available options are Left (beside the main image), Right,
+     * or null, meaning the quick tags panel is hidden.
+     */
     private ExtraPanelPosition getQuickTagPositionFromConfig() {
         PropertiesManager propsManager = AppConfig.getInstance().getPropertiesManager();
         //noinspection unchecked
@@ -137,6 +160,10 @@ public class IceExtension extends ImageViewerExtension {
         return null;
     }
 
+    /**
+     * Overridden here so we can return our tag preview panel and/or quick tag panel,
+     * if they are enabled in configuration.
+     */
     @Override
     public JComponent getExtraPanelComponent(ExtraPanelPosition position) {
         if (position == getTagPreviewPositionFromConfig()) {
@@ -157,6 +184,9 @@ public class IceExtension extends ImageViewerExtension {
         return null;
     }
 
+    /**
+     * Returns the ICE top-level menu which is to be added to the application's main menu bar.
+     */
     @Override
     public List<JMenu> getTopLevelMenus(MainWindow.BrowseMode browseMode) {
         JMenu iceMenu = new JMenu("ICE");
@@ -203,6 +233,12 @@ public class IceExtension extends ImageViewerExtension {
         return false;
     }
 
+    /**
+     * This extension will write "ice" files alongside each image to store
+     * tag information for the image. We'll mark these ice files as companion
+     * files so that the parent application will handle copy/move/rename/delete
+     * operations on them as the image itself is modified.
+     */
     @Override
     public boolean isCompanionFile(File candidateFile) {
         // First make sure it's a file that we would work with:
@@ -308,6 +344,11 @@ public class IceExtension extends ImageViewerExtension {
         }
     }
 
+    /**
+     * We can add a little hyperlink at the top of a thumbnail panel if the image has tags
+     * associated with it. Clicking the hyperlink will bring up the tag editor for that image.
+     * You can accomplish the same thing by hitting Ctrl+G or by clicking on the tag preview panel.
+     */
     @Override
     public void thumbPanelCreated(ThumbPanel thumbPanel) {
         File srcFile = thumbPanel.getFile();
