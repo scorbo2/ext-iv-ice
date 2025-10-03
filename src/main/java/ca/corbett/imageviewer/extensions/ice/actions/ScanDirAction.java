@@ -1,5 +1,6 @@
 package ca.corbett.imageviewer.extensions.ice.actions;
 
+import ca.corbett.extras.progress.MultiProgressAdapter;
 import ca.corbett.extras.progress.MultiProgressDialog;
 import ca.corbett.imageviewer.extensions.ice.TagIndex;
 import ca.corbett.imageviewer.extensions.ice.threads.ScanThread;
@@ -26,7 +27,19 @@ public class ScanDirAction extends AbstractAction {
             return;
         }
 
-        ScanThread scanThread = TagIndex.getInstance().scan(dir, isRecursive);
+        final ScanThread scanThread = TagIndex.getInstance().scan(dir, isRecursive);
+        scanThread.addProgressListener(new MultiProgressAdapter() {
+            @Override
+            public void progressComplete() {
+                MainWindow.getInstance().showMessageDialog("Scan complete",
+                                                           "Tag scan complete. Entries added: "
+                                                                   + scanThread.getEntriesCreated()
+                                                                   + "; entries updated: "
+                                                                   + scanThread.getEntriesUpdated()
+                                                                   + "; entries skipped (unchanged): "
+                                                                   + scanThread.getEntriesSkippedBecauseUpToDate());
+            }
+        });
         new MultiProgressDialog(MainWindow.getInstance(), "Tag scan").runWorker(scanThread, true);
     }
 }

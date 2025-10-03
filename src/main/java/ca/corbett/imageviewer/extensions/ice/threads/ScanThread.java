@@ -24,10 +24,26 @@ public class ScanThread extends MultiProgressWorker {
     private final boolean isRecursive;
     private boolean wasCanceled;
 
+    private int entriesCreated;
+    private int entriesUpdated;
+    private int entriesSkippedBecauseUpToDate;
+
     public ScanThread(File startDir, boolean isRecursive) {
         this.startDir = startDir;
         this.isRecursive = isRecursive;
         wasCanceled = false;
+    }
+
+    public int getEntriesCreated() {
+        return entriesCreated;
+    }
+
+    public int getEntriesUpdated() {
+        return entriesUpdated;
+    }
+
+    public int getEntriesSkippedBecauseUpToDate() {
+        return entriesSkippedBecauseUpToDate;
     }
 
     @Override
@@ -38,9 +54,9 @@ public class ScanThread extends MultiProgressWorker {
             return;
         }
         log.info("IceExtension: scanning "+startDir.getAbsolutePath() + (isRecursive?" recursively":""));
-        int entriesCreated = 0;
-        int entriesUpdated = 0;
-        int entriesSkippedBecauseUpToDate = 0;
+        entriesCreated = 0;
+        entriesUpdated = 0;
+        entriesSkippedBecauseUpToDate = 0;
         fireProgressBegins(2);
         List<File> tagFiles = FileSystemUtil.findFiles(startDir, isRecursive, "ice");
         fireMajorProgressUpdate(1, tagFiles.size(), "Scanning tag files...");
