@@ -128,3 +128,7 @@ To remove the extension, exit ImageViewer and delete the extension jar file.
 ## License
 
 ImageViewer and the ICE extension are made available under the MIT license: https://opensource.org/license/mit
+
+## Revision history
+
+[Release notes](src/main/resources/ca/corbett/imageviewer/extensions/ice/ReleaseNotes.txt)
