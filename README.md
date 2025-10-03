@@ -1,7 +1,7 @@
 # ext-iv-ice
 
 ## What is this?
-This is an extension for the ImageViewer application to allow semantic tagging or images, and searches
+This is an extension for the ImageViewer application to allow semantic tagging of images, and searches
 based on those tags. Originally a standalone application called ICE (Image Classification Engine) from 2012, this
 extension duplicates some of the functionality of the original application in the form of an extension
 for ImageViewer.
