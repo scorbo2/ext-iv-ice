@@ -2,7 +2,7 @@ ext-iv-ice Release Notes
 Author: Steve Corbett
 
 Version 2.2.1 [TODO] - maintenance release
-  - TODO change list here
+  #20 - remove debug logging
 
 Version 2.2.0 [2025-10-02] - Initial release
   - From-scratch reimplementation of the original ICE app from 2012
