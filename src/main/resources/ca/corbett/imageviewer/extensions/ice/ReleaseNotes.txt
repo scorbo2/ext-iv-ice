@@ -2,6 +2,7 @@ ext-iv-ice Release Notes
 Author: Steve Corbett
 
 Version 2.2.1 [TODO] - maintenance release
+  #23 - Tag index file format improvements
   #20 - remove debug logging
 
 Version 2.2.0 [2025-10-02] - Initial release
