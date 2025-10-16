@@ -118,7 +118,7 @@ git clone https://github.com/scorbo2/ext-iv-ice.git
 cd ext-iv-ice
 mvn package
 cd target
-cp ext-iv-ice-2.2.0.jar ~/.ImageViewer/extensions
+cp ext-iv-ice-2.2.1.jar ~/.ImageViewer/extensions
 ```
 
 To remove the extension, exit ImageViewer and delete the extension jar file. 

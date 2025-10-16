@@ -3,11 +3,13 @@ package ca.corbett.imageviewer.extensions.ice;
 import ca.corbett.extras.properties.BooleanProperty;
 import ca.corbett.imageviewer.AppConfig;
 import ca.corbett.imageviewer.Version;
+import ca.corbett.imageviewer.extensions.ice.io.TagIndexPersistence;
 import ca.corbett.imageviewer.extensions.ice.threads.ScanThread;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -155,17 +157,13 @@ public class TagIndex {
         }
 
         try {
-            List<String> lines = FileUtils.readLines(indexFile, (String)null);
+            List<TagIndexEntry> entries = TagIndexPersistence.load(indexFile); // auto-detects file version
             clear(); // after we read the file but before we start processing it
-            for (String line : lines) {
-                if (line.isBlank() || line.trim().startsWith("#")) {
-                    continue; // skip blank lines and comments
-                }
-                TagIndexEntry indexEntry = new TagIndexEntry(line);
-                indexEntries.put(indexEntry.getImageFilePath(), indexEntry);
+            for (TagIndexEntry entry : entries) {
+                indexEntries.put(entry.getImageFile().getAbsolutePath(), entry);
             }
         }
-        catch (IOException ioe) {
+        catch (IOException | UncheckedIOException ioe) {
             log.log(Level.SEVERE, "TagIndex: problem reading tag index: "+ioe.getMessage(), ioe);
         }
     }
@@ -181,17 +179,12 @@ public class TagIndex {
                                               .map(Map.Entry::getValue)
                                               .toList();
 
-        List<String> lines = new ArrayList<>(sortedList.size());
-        for (TagIndexEntry entry : sortedList) {
-            lines.add(entry.toString());
-        }
         try {
-            FileUtils.writeLines(indexFile, lines);
-            log.log(Level.INFO, "IceExtension: saved "+lines.size() + " entries to tag index.");
+            TagIndexPersistence.save(sortedList, indexFile);
+            log.log(Level.INFO, "IceExtension: saved "+sortedList.size() + " entries to tag index.");
         }
         catch (IOException ioe) {
             log.log(Level.SEVERE, "TagIndex: problem writing tag index: "+ioe.getMessage(), ioe);
         }
     }
-
 }

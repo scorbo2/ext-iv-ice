@@ -61,7 +61,7 @@ public class IceExtension extends ImageViewerExtension {
     private static final Logger log = Logger.getLogger(IceExtension.class.getName());
 
     private static final String extInfoLocation = "/ca/corbett/imageviewer/extensions/ice/extInfo.json";
-    private final AppExtensionInfo extInfo;
+    public static AppExtensionInfo extInfo;
 
     private static final String[] validPositionsTagPreviewPanel = {
             "Don't show tag preview",

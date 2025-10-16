@@ -351,9 +351,10 @@ public class QuickTagPanel extends JPanel {
         dialog.setVisible(true);
         if (dialog.wasOkayed()) {
             if (dialog.wasSourceChanged()) {
-                log.info("You changed the source! "+dialog.getSelectedSourceName());
+                log.info("Switching to quick tag source: "+dialog.getSelectedSourceName());
                 currentSource = dialog.getSelectedSourceName();
                 setSourceInProperties(currentSource);
+                isExpandedMap.clear();
                 reset();
             }
         }

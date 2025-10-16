@@ -26,14 +26,10 @@ import java.util.Objects;
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
 public class TagIndexEntry {
-    private String imageFilePath;
 
-    private String tagFilePath;
+    private File imageFile;
     private File tagFile;
-
-    private String tagListRawString;
     private TagList tagList;
-
     private long tagFileLastModified;
     private long tagFileSize;
 
@@ -41,58 +37,19 @@ public class TagIndexEntry {
         tagList = new TagList();
     }
 
-    public TagIndexEntry(String sourceLine) {
-        String[] parts = sourceLine.split("\\|");
-        if (! parts[0].isBlank()) {
-            imageFilePath = parts[0];
-        }
-        if (parts.length > 1) {
-            tagFilePath = parts[1];
-            tagFile = new File(tagFilePath);
-        }
-        if (parts.length > 2) {
-            tagFileSize = Long.parseLong(parts[2]);
-        }
-        if (parts.length > 3) {
-            tagFileLastModified = Long.parseLong(parts[3]);
-        }
-        if (parts.length > 4) {
-            tagListRawString = parts[4];
-            tagList = TagList.of(tagListRawString);
-        }
-        else {
-            tagList = new TagList();
-        }
-    }
-
-    public String getImageFilePath() {
-        return imageFilePath;
+    public File getImageFile() {
+        return imageFile;
     }
 
     public void setImageFile(File imageFile) {
-        imageFilePath = imageFile.getAbsolutePath();
-    }
-
-    public void setImageFilePath(String path) {
-        imageFilePath = path;
-    }
-
-    public String getTagFilePath() {
-        return tagFilePath;
+        this.imageFile = imageFile;
     }
 
     public File getTagFile() {
         return tagFile;
     }
-
-    public void setTagFilePath(String tagFilePath) {
-        this.tagFilePath = tagFilePath;
-        this.tagFile = new File(tagFilePath);
-    }
-
     public void setTagFile(File tagFile) {
         this.tagFile = tagFile;
-        this.tagFilePath = tagFile.getAbsolutePath();
     }
 
     public TagList getTagList() {
@@ -121,8 +78,7 @@ public class TagIndexEntry {
     }
 
     public void setTagList(TagList tagList) {
-        tagListRawString = tagList.toString();
-        this.tagList = TagList.of(tagListRawString); // make our own copy of it for immutability
+        this.tagList = TagList.of(tagList.toString()); // make our own copy of it for immutability
     }
 
     public long getTagFileLastModified() {
@@ -144,30 +100,39 @@ public class TagIndexEntry {
     @Override
     public boolean equals(Object object) {
         if (!(object instanceof TagIndexEntry that)) { return false; }
+        String imageFilePath = (imageFile == null) ? "" : imageFile.getAbsolutePath();
+        String thatImageFilePath = (that.imageFile == null) ? "" : that.imageFile.getAbsolutePath();
+        String tagFilePath = (tagFile == null) ? "" : tagFile.getAbsolutePath();
+        String thatTagFilePath = (that.tagFile == null) ? "" : that.tagFile.getAbsolutePath();
+        String rawTagList = (tagList == null) ? "" : tagList.toString();
+        String thatRawTagList = (that.tagList == null) ? "" : that.tagList.toString();
         return tagFileLastModified == that.tagFileLastModified
                 && tagFileSize == that.tagFileSize
-                && Objects.equals(imageFilePath, that.imageFilePath)
-                && Objects.equals(tagFilePath, that.tagFilePath)
-                && Objects.equals(tagListRawString, that.tagListRawString);
+                && Objects.equals(imageFilePath, thatImageFilePath)
+                && Objects.equals(tagFilePath, thatTagFilePath)
+                && Objects.equals(rawTagList, thatRawTagList);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(imageFilePath, tagFilePath, tagListRawString, tagFileLastModified, tagFileSize);
+        String imageFilePath = (imageFile == null) ? "" : imageFile.getAbsolutePath();
+        String tagFilePath = (tagFile == null) ? "" : tagFile.getAbsolutePath();
+        String rawTagList = (tagList == null) ? "" : tagList.toString();
+        return Objects.hash(imageFilePath, tagFilePath, rawTagList, tagFileLastModified, tagFileSize);
     }
 
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append(imageFilePath == null ? "" : imageFilePath);
+        sb.append(imageFile == null ? "" : imageFile.getAbsolutePath());
         sb.append("|");
-        sb.append(tagFilePath == null ? "" : tagFilePath);
+        sb.append(tagFile == null ? "" : tagFile.getAbsolutePath());
         sb.append("|");
         sb.append(tagFileSize);
         sb.append("|");
         sb.append(tagFileLastModified);
         sb.append("|");
-        sb.append(tagListRawString == null ? "" : tagListRawString);
+        sb.append(tagList == null ? "" : tagList.toString());
         return sb.toString();
     }
 }
