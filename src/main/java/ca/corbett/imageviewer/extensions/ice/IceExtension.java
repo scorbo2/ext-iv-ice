@@ -94,6 +94,10 @@ public class IceExtension extends ImageViewerExtension {
         return extInfo;
     }
 
+    @Override
+    public void loadJarResources() {
+    }
+
     /**
      * Returns all the config properties that this extension will use.
      * The parent application will add these to the application config dialog.

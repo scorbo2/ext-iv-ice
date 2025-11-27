@@ -107,7 +107,7 @@ and even execute searches within the set!
 
 ## Setup and requirements
 
-To run the ICE extension, you'll need [ImageViewer](https://github.com/scorbo2/imageviewer) version 2.2, which
+To run the ICE extension, you'll need [ImageViewer](https://github.com/scorbo2/imageviewer) version 2.3, which
 is the latest version at the time of this writing.
 
 You'll need to clone the maven repo and build the extension jar, and copy it into your application extensions
@@ -118,7 +118,7 @@ git clone https://github.com/scorbo2/ext-iv-ice.git
 cd ext-iv-ice
 mvn package
 cd target
-cp ext-iv-ice-2.2.1.jar ~/.ImageViewer/extensions
+cp ext-iv-ice-2.3.0.jar ~/.ImageViewer/extensions
 ```
 
 To remove the extension, exit ImageViewer and delete the extension jar file. 
