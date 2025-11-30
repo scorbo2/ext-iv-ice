@@ -322,11 +322,10 @@ public class IceExtension extends ImageViewerExtension {
 
     /**
      * Overridden here so we can keep our tag index up to date as images are moved, renamed,
-     * deleted, copied, or symlinked. Note: this should be handled in postImageOperation, but
-     * there's <a href="https://github.com/scorbo2/imageviewer/issues/42">an issue</a> that needs addressed first.
+     * deleted, copied, or symlinked.
      */
     @Override
-    public void preImageOperation(ImageOperation.Type opType, File srcFile, File destFile) {
+    public void postImageOperation(ImageOperation.Type opType, File srcFile, File destFile) {
         switch (opType) {
             case DELETE: TagIndex.getInstance().removeEntry(srcFile); break;
 
