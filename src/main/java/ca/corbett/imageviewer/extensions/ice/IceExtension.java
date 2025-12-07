@@ -304,11 +304,8 @@ public class IceExtension extends ImageViewerExtension {
             return;
         }
 
-        if (selectedImage.isEmpty()) {
-            for (TagPreviewPanel tagPreviewPanel : tagPreviewPanels) {
-                tagPreviewPanel.clearTags();
-            }
-            return;
+        for (TagPreviewPanel tagPreviewPanel : tagPreviewPanels) {
+            tagPreviewPanel.clearTags();
         }
 
         File imageFile = selectedImage.getImageFile();

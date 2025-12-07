@@ -2,6 +2,7 @@ ext-iv-ice Release Notes
 Author: Steve Corbett
 
 Version 2.3.0 [2025-12-07]
+  #30 - Fix bug with tag preview panel not clearing properly
   #28 - Upgrade to ImageViewer 2.3 release
   #27 - allow quick tag panel in left/right simultaneously
   #22 - Fix bug with tag hyperlink and image zoom
