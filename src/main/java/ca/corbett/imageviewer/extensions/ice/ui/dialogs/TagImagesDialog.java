@@ -171,7 +171,7 @@ public class TagImagesDialog extends JDialog {
         for (String[] labelString : labelStrings) {
             LabelField labelField = (LabelField)new LabelField(labelString[0], labelString[1])
                     .setMargins(new Margins(38, 4, 4, 2, 8));
-            setHyperlink(labelField.getFieldLabel(), new FieldLabelAction(this, labelString[2]));
+            LabelField.setLabelHyperlink(labelField.getFieldLabel(), new FieldLabelAction(this, labelString[2]));
             labelPanel.add(labelField);
         }
 
@@ -204,25 +204,6 @@ public class TagImagesDialog extends JDialog {
 
         buttonPanel.setBorder(BorderFactory.createRaisedBevelBorder());
         return buttonPanel;
-    }
-
-    /**
-     * Internal utility method required here until
-     * <A href="https://github.com/scorbo2/swing-extras/issues/132">swing-extras issue 132</A>
-     * is addressed. TODO don't forget to remove me later!
-     */
-    public void setHyperlink(JLabel linkLabel, Action action) {
-        linkLabel.setForeground(LookAndFeelManager.getLafColor("Component.linkColor", Color.BLUE));
-        linkLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        Map attributes = linkLabel.getFont().getAttributes();
-        attributes.put(TextAttribute.UNDERLINE, TextAttribute.UNDERLINE_ON);
-        linkLabel.setFont(linkLabel.getFont().deriveFont(attributes));
-        linkLabel.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                action.actionPerformed(null);
-            }
-        });
     }
 
     private static class FieldLabelAction extends AbstractAction {

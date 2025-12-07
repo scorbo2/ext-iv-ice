@@ -16,6 +16,7 @@ import ca.corbett.imageviewer.extensions.ice.actions.ScanDirAction;
 import ca.corbett.imageviewer.extensions.ice.actions.TagMultipleImagesAction;
 import ca.corbett.imageviewer.extensions.ice.actions.TagSingleImageAction;
 import ca.corbett.imageviewer.extensions.ice.actions.SearchAction;
+import ca.corbett.imageviewer.extensions.ice.actions.TagStatsAction;
 import ca.corbett.imageviewer.extensions.ice.ui.QuickTagPanel;
 import ca.corbett.imageviewer.extensions.ice.ui.TagPreviewPanel;
 import ca.corbett.imageviewer.ui.ImageInstance;
@@ -71,7 +72,8 @@ public class IceExtension extends ImageViewerExtension {
     private static final String[] validPositionsQuickTagPanel = {
             "Don't show quick tag panel",
             "Left",
-            "Right"
+            "Right",
+            "Both left and right"
     };
     public static final String tagPreviewPanelPositionProp = "ICE.General.tagPreviewPanelPosition";
     public static final String quickTagPanelPositionProp = "ICE.General.quickTagPanelPosition";
@@ -92,6 +94,10 @@ public class IceExtension extends ImageViewerExtension {
     @Override
     public AppExtensionInfo getInfo() {
         return extInfo;
+    }
+
+    @Override
+    public void loadJarResources() {
     }
 
     /**
@@ -143,21 +149,24 @@ public class IceExtension extends ImageViewerExtension {
 
     /**
      * Returns the currently-configured position of our quick tag panel.
-     * The available options are Left (beside the main image), Right,
-     * or null, meaning the quick tags panel is hidden.
+     * We return this as a List, because we offer the option of allowing
+     * multiple quick tag panels. So, the returned list may include
+     * Left, Right, or both Left and Right. If the returned list is
+     * empty, the quick tag panel is not to be shown at all.
      */
-    private ExtraPanelPosition getQuickTagPositionFromConfig() {
+    private List<ExtraPanelPosition> getQuickTagPositionFromConfig() {
         PropertiesManager propsManager = AppConfig.getInstance().getPropertiesManager();
         //noinspection unchecked
         ComboProperty<String> prop = (ComboProperty<String>)propsManager.getProperty(quickTagPanelPositionProp);
         if (prop != null) {
             return switch (prop.getSelectedIndex()) {
-                case 1 -> ExtraPanelPosition.Left;
-                case 2 -> ExtraPanelPosition.Right;
-                default -> null;
+                case 1 -> List.of(ExtraPanelPosition.Left);
+                case 2 -> List.of(ExtraPanelPosition.Right);
+                case 3 -> List.of(ExtraPanelPosition.Left, ExtraPanelPosition.Right);
+                default -> List.of();
             };
         }
-        return null;
+        return List.of();
     }
 
     /**
@@ -172,7 +181,7 @@ public class IceExtension extends ImageViewerExtension {
             return tagPreviewPanel;
         }
 
-        if (position == getQuickTagPositionFromConfig()) {
+        if (getQuickTagPositionFromConfig().contains(position)) {
             QuickTagPanel panel = new QuickTagPanel(); // create a new one on each request
             quickTagPanels.add(panel);
             JScrollPane scrollPane = new JScrollPane(panel);
@@ -213,6 +222,8 @@ public class IceExtension extends ImageViewerExtension {
                 iceMenu.add(scanDirItemRecursive);
             }
         }
+
+        iceMenu.add(new TagStatsAction());
 
         return List.of(iceMenu);
     }
@@ -296,11 +307,8 @@ public class IceExtension extends ImageViewerExtension {
             return;
         }
 
-        if (selectedImage.isEmpty()) {
-            for (TagPreviewPanel tagPreviewPanel : tagPreviewPanels) {
-                tagPreviewPanel.clearTags();
-            }
-            return;
+        for (TagPreviewPanel tagPreviewPanel : tagPreviewPanels) {
+            tagPreviewPanel.clearTags();
         }
 
         File imageFile = selectedImage.getImageFile();
@@ -310,6 +318,7 @@ public class IceExtension extends ImageViewerExtension {
                 return;
             }
             TagList tagList = TagList.fromFile(file);
+            TagIndex.getInstance().addOrUpdateEntry(imageFile, file); // keep tag index up to date as we browse
             for (TagPreviewPanel tagPreviewPanel : tagPreviewPanels) {
                 tagPreviewPanel.setTagList(tagList);
             }
@@ -318,11 +327,10 @@ public class IceExtension extends ImageViewerExtension {
 
     /**
      * Overridden here so we can keep our tag index up to date as images are moved, renamed,
-     * deleted, copied, or symlinked. Note: this should be handled in postImageOperation, but
-     * there's <a href="https://github.com/scorbo2/imageviewer/issues/42">an issue</a> that needs addressed first.
+     * deleted, copied, or symlinked.
      */
     @Override
-    public void preImageOperation(ImageOperation.Type opType, File srcFile, File destFile) {
+    public void postImageOperation(ImageOperation.Type opType, File srcFile, File destFile) {
         switch (opType) {
             case DELETE: TagIndex.getInstance().removeEntry(srcFile); break;
 

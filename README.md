@@ -105,25 +105,39 @@ And now that our search results are in a proper image set, we of course have all
 image set handling as provided by the base ImageViewer application: we can add/remove images, add sub-sets,
 and even execute searches within the set!
 
-## Setup and requirements
+## How do I get it?
 
-To run the ICE extension, you'll need [ImageViewer](https://github.com/scorbo2/imageviewer) version 2.2, which
-is the latest version at the time of this writing.
+### Option 1: automatic download and installation
 
-You'll need to clone the maven repo and build the extension jar, and copy it into your application extensions
-directory:
+**NEW!** As of ImageViewer 2.3, you no longer need to manually build and install application extensions!
+Now, you can visit the extension manager dialog and go to the "Available" tab:
+
+![Extension manager](docs/extension_manager.jpg "Extension manager")
+
+Select "ICE" in the left menu, and then hit the "Install" button in the top right. If you decide later to
+remove the extension, revisit the extension manager dialog, select "ICE" in the left menu, and hit the
+"Uninstall" button in the top right. The application will prompt to restart. It's just that easy!
+
+### Option 2: Manual download
+
+You can manually download the extension jar: 
+[ext-iv-ice-2.3.0.jar](https://www.corbett.ca/apps/ImageViewer/extensions/2.3/ext-iv-ice-2.3.0.jar)
+
+Save it to your ~/.ImageViewer/extensions directory and restart the application.
+
+### Option 3: build from source
+
+You can clone this repo and build the extension jar with Maven (Java 17 or higher required):
 
 ```shell
 git clone https://github.com/scorbo2/ext-iv-ice.git
 cd ext-iv-ice
 mvn package
+
+# Copy the result to the extensions directory:
 cd target
-cp ext-iv-ice-2.2.1.jar ~/.ImageViewer/extensions
+cp ext-iv-ice-2.3.0.jar ~/.ImageViewer/extensions
 ```
-
-To remove the extension, exit ImageViewer and delete the extension jar file. 
-
-(Coming soon: automatic install/uninstall from within the application... much easier!)
 
 ## License
 

@@ -11,11 +11,16 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  * If enabled, we'll manage an index file storing all known tags for all known images, along
@@ -54,6 +59,44 @@ public class TagIndex {
             instance = new TagIndex();
         }
         return instance;
+    }
+
+    public int size() {
+        return indexEntries.size();
+    }
+
+    public long fileSize() {
+        return ! indexFile.exists() ? 0L : indexFile.length();
+    }
+
+    /**
+     * For statistics purposes only (for example, in the TagStatsDialog), we offer the ability
+     * to return a list of top N most frequently-occurring tags, with an optional exclusion list
+     * to filter out tags that shouldn't count for this purpose.
+     *
+     * @param N How many tags should be returned (ordered by most frequently occurring)
+     * @param exceptTheseTags An optional list of tags to exclude from the search
+     * @return A List of the most frequently occurring tags in decreasing order of occurrence.
+     */
+    public List<String> getMostFrequentTags(int N, List<String> exceptTheseTags) {
+        Set<String> excludedTags = exceptTheseTags == null ?
+                Collections.emptySet() :
+                exceptTheseTags.stream()
+                               .map(String::toLowerCase)
+                               .collect(Collectors.toSet());
+
+        return indexEntries.values().stream()
+                       .flatMap(tagList -> tagList.getTagList().getTags().stream())
+                       .filter(tag -> !excludedTags.contains(tag))
+                       .collect(Collectors.groupingBy(
+                               Function.identity(),
+                               Collectors.counting()
+                       ))
+                       .entrySet().stream()
+                       .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                       .limit(N)
+                       .map(Map.Entry::getKey)
+                       .collect(Collectors.toList());
     }
 
     public static boolean isEnabled() {
