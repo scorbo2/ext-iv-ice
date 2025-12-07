@@ -16,6 +16,7 @@ import ca.corbett.imageviewer.extensions.ice.actions.ScanDirAction;
 import ca.corbett.imageviewer.extensions.ice.actions.TagMultipleImagesAction;
 import ca.corbett.imageviewer.extensions.ice.actions.TagSingleImageAction;
 import ca.corbett.imageviewer.extensions.ice.actions.SearchAction;
+import ca.corbett.imageviewer.extensions.ice.actions.TagStatsAction;
 import ca.corbett.imageviewer.extensions.ice.ui.QuickTagPanel;
 import ca.corbett.imageviewer.extensions.ice.ui.TagPreviewPanel;
 import ca.corbett.imageviewer.ui.ImageInstance;
@@ -222,6 +223,8 @@ public class IceExtension extends ImageViewerExtension {
             }
         }
 
+        iceMenu.add(new TagStatsAction());
+
         return List.of(iceMenu);
     }
 
@@ -315,6 +318,7 @@ public class IceExtension extends ImageViewerExtension {
                 return;
             }
             TagList tagList = TagList.fromFile(file);
+            TagIndex.getInstance().addOrUpdateEntry(imageFile, file); // keep tag index up to date as we browse
             for (TagPreviewPanel tagPreviewPanel : tagPreviewPanels) {
                 tagPreviewPanel.setTagList(tagList);
             }

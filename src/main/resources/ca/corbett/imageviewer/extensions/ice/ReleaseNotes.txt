@@ -6,6 +6,7 @@ Version 2.3.0 [2025-12-07]
   #28 - Upgrade to ImageViewer 2.3 release
   #27 - allow quick tag panel in left/right simultaneously
   #22 - Fix bug with tag hyperlink and image zoom
+  #21 - Provide a tag index stats dialog with a clear option
 
 Version 2.2.1 [2025-10-15] - maintenance release
   #24 - Minor bug in QuickTagPanel.selectSource()
