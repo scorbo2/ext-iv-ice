@@ -16,7 +16,7 @@ public class TagDirStatsAction extends AbstractAction {
     public void actionPerformed(ActionEvent e) {
         File dir = MainWindow.getInstance().getCurrentDirectory();
         if (dir == null) {
-            MainWindow.getInstance().showMessageDialog("Scan dir", "Nothing selected.");
+            MainWindow.getInstance().showMessageDialog("Tag directory statistics", "Nothing selected.");
             return;
         }
 

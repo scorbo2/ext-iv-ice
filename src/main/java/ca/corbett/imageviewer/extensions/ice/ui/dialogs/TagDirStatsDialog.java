@@ -7,8 +7,6 @@ import ca.corbett.forms.Alignment;
 import ca.corbett.forms.FormPanel;
 import ca.corbett.forms.fields.CheckBoxField;
 import ca.corbett.forms.fields.LabelField;
-import ca.corbett.imageviewer.extensions.ImageViewerExtensionManager;
-import ca.corbett.imageviewer.extensions.builtin.DirectoryInfoDialog;
 import ca.corbett.imageviewer.extensions.ice.TagList;
 import ca.corbett.imageviewer.ui.ThumbContainerPanel;
 import org.apache.commons.io.FilenameUtils;
@@ -119,7 +117,7 @@ public class TagDirStatsDialog extends JDialog {
     /**
      * Returns the companion ice file for the given image file, if there is one.
      */
-    public static File getICEFile(File imageFile) {
+    private static File getICEFile(File imageFile) {
         // Check if a matching .ice file exists in same dir:
         File testFile = new File(imageFile.getParentFile(), FilenameUtils.getBaseName(imageFile.getName())+".ice");
         if (testFile.exists()) {
@@ -156,7 +154,6 @@ public class TagDirStatsDialog extends JDialog {
 
             int totalTagsFound = 0;
 
-            ImageViewerExtensionManager extManager = ImageViewerExtensionManager.getInstance();
             List<File> allFiles = FileSystemUtil.findFiles(dir, recursive, ThumbContainerPanel.getImageExtensions());
             fireProgressBegins(allFiles.size());
 
@@ -174,17 +171,20 @@ public class TagDirStatsDialog extends JDialog {
                     }
 
                     // Update progress
-                    fireProgressUpdate(i, "Processing...");
+                    if (! fireProgressUpdate(i+1, "Processing...")) {
+                        // User cancelled
+                        break;
+                    }
                 }
 
-                averageTags = (taggedCount > 0) ? (totalTagsFound / taggedCount) : 0;
+                averageTags = (imageCount > 0) ? (totalTagsFound / imageCount) : 0;
 
                 // Update UI fields with final counts, but do it on the Swing EDT thread:
                 SwingUtilities.invokeLater(() -> {
                     totalLabel.setText(imageCount + " images");
                     taggedLabel.setText(taggedCount + " tagged");
                     untaggedLabel.setText(untaggedCount + " untagged");
-                    averageLabel.setText(averageTags + " tags/image");
+                    averageLabel.setText(averageTags + " tags per image");
                 });
             }
             finally {
