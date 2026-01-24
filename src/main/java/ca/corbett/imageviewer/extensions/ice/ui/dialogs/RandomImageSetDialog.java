@@ -305,7 +305,7 @@ public class RandomImageSetDialog extends JDialog {
         }
 
         // Fuck it, use a guid:
-        return UUID.randomUUID().toString();
+        return "/ICE/" + UUID.randomUUID().toString();
     }
 
 
