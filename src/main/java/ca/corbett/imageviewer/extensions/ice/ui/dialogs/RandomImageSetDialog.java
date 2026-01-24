@@ -88,7 +88,7 @@ public class RandomImageSetDialog extends JDialog {
         totalLabel = new LabelField("Total images: ", "0");
         taggedLabel = new LabelField("Total tagged: ", "0");
         untaggedLabel = new LabelField("Total untagged: ", "0");
-        howManyField = new NumberField("Max set size:", 50, 1, 500, 1);
+        howManyField = new NumberField("Max set size:", 50, 10, 500, 10);
         tagCriteriaField = new ComboField<>("Tag criteria:", List.of(TagCriteria.values()), 0);
         tagCountField = new NumberField("Tag count (N):", 1, 0, Integer.MAX_VALUE, 1);
         tagCountField.setVisible(false); // will show when needed
