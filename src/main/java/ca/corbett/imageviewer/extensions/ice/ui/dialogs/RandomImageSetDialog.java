@@ -176,7 +176,7 @@ public class RandomImageSetDialog extends JDialog {
         }
 
         // Pull out images randomly until we fill our subset count:
-        // Use Fisher-Yates sort to do this in O(subsetCount) time:
+        // Use Fisher-Yates shuffle to do this in O(subsetCount) time:
         Random rand = new Random();
         for (int i = 0; i < subsetCount; i++) {
             int randomIndex = i + rand.nextInt(candidates.size() - i);
