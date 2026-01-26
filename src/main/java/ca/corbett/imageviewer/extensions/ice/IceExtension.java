@@ -12,7 +12,9 @@ import ca.corbett.extras.properties.ShortTextProperty;
 import ca.corbett.imageviewer.AppConfig;
 import ca.corbett.imageviewer.ImageOperation;
 import ca.corbett.imageviewer.extensions.ImageViewerExtension;
+import ca.corbett.imageviewer.extensions.ice.actions.RandomImageSetAction;
 import ca.corbett.imageviewer.extensions.ice.actions.ScanDirAction;
+import ca.corbett.imageviewer.extensions.ice.actions.TagDirStatsAction;
 import ca.corbett.imageviewer.extensions.ice.actions.TagMultipleImagesAction;
 import ca.corbett.imageviewer.extensions.ice.actions.TagSingleImageAction;
 import ca.corbett.imageviewer.extensions.ice.actions.SearchAction;
@@ -224,6 +226,10 @@ public class IceExtension extends ImageViewerExtension {
         }
 
         iceMenu.add(new TagStatsAction());
+        if (browseMode == MainWindow.BrowseMode.FILE_SYSTEM) {
+            iceMenu.add(new JMenuItem(new TagDirStatsAction()));
+            iceMenu.add(new JMenuItem(new RandomImageSetAction()));
+        }
 
         return List.of(iceMenu);
     }

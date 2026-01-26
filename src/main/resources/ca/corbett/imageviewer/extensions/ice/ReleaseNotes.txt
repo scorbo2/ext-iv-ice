@@ -1,6 +1,11 @@
 ext-iv-ice Release Notes
 Author: Steve Corbett
 
+Version 2.4.0 [2026-01-26]
+  #34 - Add "Tag directory stats" dialog in filesystem mode
+  #33 - Auto-set keyboard focus to text field in batch tag dialog
+  #31 - "Random image set" dialog
+
 Version 2.3.0 [2025-12-07]
   #30 - Fix bug with tag preview panel not clearing properly
   #28 - Upgrade to ImageViewer 2.3 release

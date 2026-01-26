@@ -31,6 +31,8 @@ import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.awt.font.TextAttribute;
 import java.io.File;
 import java.util.List;
@@ -70,6 +72,14 @@ public class TagImagesDialog extends JDialog {
         setLayout(new BorderLayout());
         add(buildFormPanel(), BorderLayout.CENTER);
         add(buildButtonPanel(), BorderLayout.SOUTH);
+
+        // Ensure the text area gets focus when the dialog is opened.
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowOpened(WindowEvent e) {
+                textField.getTextArea().requestFocusInWindow();
+            }
+        });
     }
 
     private void applyTags() {
