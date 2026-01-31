@@ -1,14 +1,21 @@
 package ca.corbett.imageviewer.extensions.ice.actions;
 
+import ca.corbett.extras.EnhancedAction;
 import ca.corbett.imageviewer.extensions.ice.ui.dialogs.TagStatsDialog;
 
-import javax.swing.AbstractAction;
 import java.awt.event.ActionEvent;
 
-public class TagStatsAction extends AbstractAction {
+/**
+ * An action to launch the TagStatsDialog, for viewing tag index statistics.
+ *
+ * @author <a href="https://github.com/scorbo2">scorbo2</a>
+ */
+public class TagStatsAction extends EnhancedAction {
+
+    private static final String NAME = "Tag index statistics...";
 
     public TagStatsAction() {
-        super("Tag index statistics...");
+        super(NAME);
     }
 
     @Override

@@ -1,26 +1,43 @@
 package ca.corbett.imageviewer.extensions.ice.actions;
 
-import ca.corbett.imageviewer.extensions.ice.ui.dialogs.TagDialog;
+import ca.corbett.extras.EnhancedAction;
 import ca.corbett.imageviewer.extensions.ice.TagList;
+import ca.corbett.imageviewer.extensions.ice.ui.dialogs.TagDialog;
 import ca.corbett.imageviewer.ui.ImageInstance;
 import ca.corbett.imageviewer.ui.MainWindow;
 import org.apache.commons.io.FilenameUtils;
 
-import javax.swing.AbstractAction;
 import java.awt.event.ActionEvent;
 import java.io.File;
 
-public class TagSingleImageAction extends AbstractAction {
+/**
+ * An action to launch the TagDialog for the currently selected image.
+ * This one is singleton because it has an associated KeyStrokeProperty, and we want
+ * its accelerator to get updated properly if the user remaps the keyboard shortcut.
+ *
+ * @author <a href="https://github.com/scorbo2">scorbo2</a>
+ */
+public class TagSingleImageAction extends EnhancedAction {
 
-    public TagSingleImageAction() {
-        super("Edit image tags");
+    private static final String NAME = "Edit image tags";
+    private static TagSingleImageAction instance;
+
+    private TagSingleImageAction() {
+        super(NAME);
+    }
+
+    public static TagSingleImageAction getInstance() {
+        if (instance == null) {
+            instance = new TagSingleImageAction();
+        }
+        return instance;
     }
 
     @Override
     public void actionPerformed(ActionEvent e) {
         ImageInstance currentImage = MainWindow.getInstance().getSelectedImage();
         if (currentImage.isEmpty()) {
-            MainWindow.getInstance().showMessageDialog("Edit image tags", "Nothing selected.");
+            MainWindow.getInstance().showMessageDialog(NAME, "Nothing selected.");
             return;
         }
 
