@@ -91,13 +91,13 @@ public class QuickTagPanel extends JPanel {
     private final File sourceRootDir;
     private File sourceDir;
     private int panelWidth;
-    private static BufferedImage iconAddTag;
-    private static BufferedImage iconEditTagGroup;
-    private static BufferedImage iconRemoveTagGroup;
-    private static BufferedImage iconExpand;
-    private static BufferedImage iconContract;
+    private final BufferedImage iconAddTag;
+    private final BufferedImage iconEditTagGroup;
+    private final BufferedImage iconRemoveTagGroup;
+    private final BufferedImage iconExpand;
+    private final BufferedImage iconContract;
 
-    private static String currentSource;
+    private String currentSource;
     private final Map<String, Boolean> isExpandedMap = new HashMap<>();
 
     /**
@@ -126,15 +126,14 @@ public class QuickTagPanel extends JPanel {
         if (!sourceRootDir.exists()) {
             sourceRootDir.mkdirs();
         }
-        if (iconAddTag == null) { // only load these once
-            final int iconSize = 18; // not configurable
-            iconAddTag = ImageViewerResources.getIconPlus(iconSize);
-            iconEditTagGroup = ImageViewerResources.getIconImageSetEdit(iconSize);
-            iconRemoveTagGroup = ImageViewerResources.getIconDelete(iconSize);
-            iconExpand = ImageViewerResources.getIconZoomIn(iconSize);
-            iconContract = ImageViewerResources.getIconZoomOut(iconSize);
-        }
-        reset();
+        final int iconSize = 18; // not configurable
+        iconAddTag = ImageViewerResources.getIconPlus(iconSize);
+        iconEditTagGroup = ImageViewerResources.getIconImageSetEdit(iconSize);
+        iconRemoveTagGroup = ImageViewerResources.getIconDelete(iconSize);
+        iconExpand = ImageViewerResources.getIconZoomIn(iconSize);
+        iconContract = ImageViewerResources.getIconZoomOut(iconSize);
+
+        reset(); // Force a load of our contents
     }
 
     /**
@@ -433,7 +432,7 @@ public class QuickTagPanel extends JPanel {
      * This is great for having a potentially large number of tag groups without requiring
      * a lot of vertical scrolling to see them all.
      */
-    private static class HeaderLabel extends JPanel {
+    private class HeaderLabel extends JPanel {
         private final String labelText;
         private final JButton btnExpander;
         private boolean isExpanded;
