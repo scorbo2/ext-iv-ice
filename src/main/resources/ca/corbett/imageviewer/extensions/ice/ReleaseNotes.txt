@@ -1,6 +1,9 @@
 ext-iv-ice Release Notes
 Author: Steve Corbett
 
+Version 3.0.0 [TODO - release date]
+  TODO change notes for 3.0.0 release
+
 Version 2.4.0 [2026-01-26]
   #34 - Add "Tag directory stats" dialog in filesystem mode
   #33 - Auto-set keyboard focus to text field in batch tag dialog
