@@ -44,7 +44,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * The QuickTagPanel presents a configurable list of commonly-used tags that can applied to the
+ * The QuickTagPanel presents a configurable list of commonly-used tags that can be applied to the
  * currently selected image with a single button click. The user can opt to place this panel
  * either to the left of the main image, or to the right of it, or have one QuickTagPanel in
  * each of those positions. The panel(s) can also be hidden entirely in application settings.
