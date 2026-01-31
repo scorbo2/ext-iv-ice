@@ -22,7 +22,7 @@ public class TagSingleImageAction extends EnhancedAction {
     private static final String NAME = "Edit image tags";
     private static TagSingleImageAction instance;
 
-    TagSingleImageAction() {
+    private TagSingleImageAction() {
         super(NAME);
     }
 

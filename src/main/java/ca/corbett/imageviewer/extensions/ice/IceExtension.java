@@ -216,7 +216,8 @@ public class IceExtension extends ImageViewerExtension {
             actions.add(TagSingleImageAction.getInstance());
             actions.add(new TagMultipleImagesAction());
 
-            if (browseMode == MainWindow.BrowseMode.FILE_SYSTEM) {
+            // Only add scan actions if the tag index is enabled:
+            if (browseMode == MainWindow.BrowseMode.FILE_SYSTEM && TagIndex.isEnabled()) {
                 actions.add(new ScanDirAction("Tag scan: current directory", false));
                 actions.add(new ScanDirAction("Tag scan: current directory recursively", true));
             }

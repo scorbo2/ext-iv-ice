@@ -16,7 +16,8 @@ But there are actually quite a few additional features now available in the appl
 
 ### Tagging a single image
 
-The first thing we can do is hit Ctrl+G to bring up the tag edit dialog for the currently selected image:
+The first thing we can do is hit Ctrl+G (or whatever shortcut you have configured in the application settings dialog)
+to bring up the tag edit dialog for the currently selected image:
 
 ![Tag edit dialog](docs/screenshot02.jpg)
 
