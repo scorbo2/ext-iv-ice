@@ -1,17 +1,22 @@
 package ca.corbett.imageviewer.extensions.ice.ui;
 
+import ca.corbett.extras.io.KeyStrokeManager;
+import ca.corbett.extras.properties.AbstractProperty;
+import ca.corbett.extras.properties.KeyStrokeProperty;
 import ca.corbett.forms.Alignment;
 import ca.corbett.forms.FormPanel;
 import ca.corbett.forms.Margins;
 import ca.corbett.forms.fields.LongTextField;
+import ca.corbett.imageviewer.AppConfig;
+import ca.corbett.imageviewer.Version;
+import ca.corbett.imageviewer.extensions.ice.IceExtension;
 import ca.corbett.imageviewer.extensions.ice.TagList;
 import ca.corbett.imageviewer.extensions.ice.actions.TagSingleImageAction;
 import ca.corbett.imageviewer.ui.ImageInstance;
 import ca.corbett.imageviewer.ui.MainWindow;
-import ca.corbett.imageviewer.ui.UIReloadable;
-import ca.corbett.imageviewer.ui.actions.ReloadUIAction;
 
 import javax.swing.JPanel;
+import javax.swing.KeyStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.event.MouseAdapter;
@@ -22,7 +27,7 @@ import java.awt.event.MouseEvent;
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
-public class TagPreviewPanel extends JPanel implements UIReloadable {
+public class TagPreviewPanel extends JPanel {
     private final LongTextField textField;
 
     public TagPreviewPanel() {
@@ -46,41 +51,41 @@ public class TagPreviewPanel extends JPanel implements UIReloadable {
         });
         formPanel.add(textField);
         add(formPanel, BorderLayout.CENTER);
-        ReloadUIAction.getInstance().registerReloadable(this);
     }
 
     /**
      * Returns helpful text showing the currently-configured keyboard shortcut for the tag dialog.
      */
     private String getHelpText() {
-        return "Read-only display. Use the tag dialog to edit tags.";
+        KeyStroke ks;
 
-        // It sure would be nice to show the actual keystroke here!
-        // But something strange is happening and it's way too late at night to debug it.
-        // The code is getting executed in a wonky order, such that the code below
-        // is somehow always one out of date. That is, on startup, it's fine, but
-        // remap the shortcut and it still shows the old value. Then, remap it again,
-        // and it shows the new value from the first remap, but not the current one, and so on.
-        // NO IDEA why, so leaving it for now.
-        /*
-        KeyStroke keystroke = TagSingleImageAction.getInstance().getAcceleratorKey();
-        System.out.println("The action has a keystroke of: " + keystroke);
-        if (keystroke != null) {
-            return "Read-only display. Press " + KeyStrokeManager.keyStrokeToString(keystroke) + " to edit tags.";
+        // Try to get it from AppConfig first:
+        // (This is the normal case, after initial startup)
+        AbstractProperty prop = AppConfig.getInstance().getPropertiesManager()
+                                         .getProperty(IceExtension.quickTagShortcutProp);
+        if (prop != null) {
+            ks = ((KeyStrokeProperty)prop).getKeyStroke();
+        }
+
+        // On initial startup, this class's constructor is invoked before AppConfig queries our properties,
+        // so AppConfig may wrongly return null above. In that case, we can try peeking directly
+        // into AppConfig's persistent storage. This feels a bit hacky, but it *should* only happen once on startup.
+        else {
+            String keystrokeStr = AppConfig.peek(Version.APP_CONFIG_FILE,
+                                                 IceExtension.quickTagShortcutProp + ".keyStroke");
+            // It may legitimately be null here, if the user has unassigned the shortcut:
+            // (or if this is a first run on a brand-new install, but that will fix itself on second run)
+            // (yeah, this feels hacky too, but oh well)
+            ks = keystrokeStr == null ? null : KeyStrokeManager.parseKeyStroke(keystrokeStr);
+        }
+
+        // At this point, we either have a valid keystroke, or there isn't one assigned to our action:
+        if (ks != null) {
+            return "Read-only display. Press " + KeyStrokeManager.keyStrokeToString(ks) + " to edit tags.";
         }
         else {
-            // Our TagPreviewPanel loads before our accelerator gets set, so peek() the value of it,
-            // to determine if this null is an actual null or a false alarm null.
-            String keystrokeStr = AppConfig.peek(Version.APP_CONFIG_FILE, "Keystrokes.ICE.quickTagPanel.keyStroke");
-            System.out.println("Peeked keystroke: " + keystrokeStr);
-            if (keystrokeStr != null && KeyStrokeManager.parseKeyStroke(keystrokeStr) != null) {
-                return "Read-only display. Press " + keystrokeStr + " to edit tags.";
-            }
-
-            // Oh, I guess it actually is null:
             return "Read-only display. Use the tag dialog to edit tags."; // But you have to bring it up yourself!
         }
-        */
     }
 
     public void clearTags() {
@@ -89,11 +94,5 @@ public class TagPreviewPanel extends JPanel implements UIReloadable {
 
     public void setTagList(TagList tagList) {
         textField.setText(tagList.toString());
-    }
-
-    @Override
-    public void reloadUI() {
-        // Our keyboard shortcut may have changed, so update the help text:
-        textField.setHelpText(getHelpText());
     }
 }
