@@ -2,7 +2,8 @@ ext-iv-ice Release Notes
 Author: Steve Corbett
 
 Version 3.0.0 [TODO - release date]
-  TODO change notes for 3.0.0 release
+  #43 - Ensure TagPreviewPanel shows correct shortcut
+  #40 - Upgrade to ImageViewer 3.0 (major update!)
 
 Version 2.4.0 [2026-01-26]
   #34 - Add "Tag directory stats" dialog in filesystem mode
