@@ -1,16 +1,17 @@
 package ca.corbett.imageviewer.extensions.ice.actions;
 
+import ca.corbett.extras.EnhancedAction;
 import ca.corbett.extras.progress.MultiProgressAdapter;
 import ca.corbett.extras.progress.MultiProgressDialog;
 import ca.corbett.imageviewer.extensions.ice.TagIndex;
 import ca.corbett.imageviewer.extensions.ice.threads.ScanThread;
 import ca.corbett.imageviewer.ui.MainWindow;
 
-import javax.swing.AbstractAction;
+import javax.swing.SwingUtilities;
 import java.awt.event.ActionEvent;
 import java.io.File;
 
-public class ScanDirAction extends AbstractAction {
+public class ScanDirAction extends EnhancedAction {
 
     private final boolean isRecursive;
 
@@ -31,13 +32,16 @@ public class ScanDirAction extends AbstractAction {
         scanThread.addProgressListener(new MultiProgressAdapter() {
             @Override
             public void progressComplete() {
-                MainWindow.getInstance().showMessageDialog("Scan complete",
-                                                           "Tag scan complete. Entries added: "
-                                                                   + scanThread.getEntriesCreated()
-                                                                   + "; entries updated: "
-                                                                   + scanThread.getEntriesUpdated()
-                                                                   + "; entries skipped (unchanged): "
-                                                                   + scanThread.getEntriesSkippedBecauseUpToDate());
+                // This callback is not on the EDT, so we need to switch to it to show the dialog:
+                SwingUtilities.invokeLater(() -> {
+                    MainWindow.getInstance().showMessageDialog("Scan complete",
+                                                               "Tag scan complete. Entries added: "
+                                                                       + scanThread.getEntriesCreated()
+                                                                       + "; entries updated: "
+                                                                       + scanThread.getEntriesUpdated()
+                                                                       + "; entries skipped (unchanged): "
+                                                                       + scanThread.getEntriesSkippedBecauseUpToDate());
+                });
             }
         });
         new MultiProgressDialog(MainWindow.getInstance(), "Tag scan").runWorker(scanThread, true);

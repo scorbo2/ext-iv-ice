@@ -6,6 +6,7 @@ import ca.corbett.extras.properties.ComboProperty;
 import ca.corbett.extras.properties.IntegerProperty;
 import ca.corbett.extras.properties.ShortTextProperty;
 import ca.corbett.imageviewer.AppConfig;
+import ca.corbett.imageviewer.ImageViewerResources;
 import ca.corbett.imageviewer.Version;
 import ca.corbett.imageviewer.extensions.ImageViewerExtensionManager;
 import ca.corbett.imageviewer.extensions.ice.IceExtension;
@@ -71,16 +72,12 @@ public class QuickTagPanel extends JPanel {
             sourceRootDir.mkdirs();
         }
         if (iconAddTag == null) { // only load these once
-            try {
-                iconAddTag = ImageSetPanel.loadIconImage("icon-plus.png");
-                iconEditTagGroup = ImageSetPanel.loadIconImage("icon-document-edit.png");
-                iconRemoveTagGroup = ImageSetPanel.loadIconImage("icon-x.png");
-                iconExpand = ImageSetPanel.loadIconImage("icon-zoom-in2.png");
-                iconContract = ImageSetPanel.loadIconImage("icon-zoom-out2.png");
-            }
-            catch (IOException ioe) {
-                log.log(Level.SEVERE, "QuickTagPanel: error loading icon images: " + ioe.getMessage(), ioe);
-            }
+            final int iconSize = 18; // not configurable
+            iconAddTag = ImageViewerResources.getIconPlus(iconSize);
+            iconEditTagGroup = ImageViewerResources.getIconImageSetEdit(iconSize);
+            iconRemoveTagGroup = ImageViewerResources.getIconDelete(iconSize);
+            iconExpand = ImageViewerResources.getIconZoomIn(iconSize);
+            iconContract = ImageViewerResources.getIconZoomOut(iconSize);
         }
         reset();
     }

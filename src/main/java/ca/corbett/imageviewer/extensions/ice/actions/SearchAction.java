@@ -1,16 +1,21 @@
 package ca.corbett.imageviewer.extensions.ice.actions;
 
+import ca.corbett.extras.EnhancedAction;
 import ca.corbett.imageviewer.extensions.ice.ui.dialogs.SearchDialog;
-import ca.corbett.imageviewer.ui.MainWindow;
 
-import javax.swing.AbstractAction;
 import java.awt.event.ActionEvent;
-import java.io.File;
 
-public class SearchAction extends AbstractAction {
+/**
+ * An action to launch the SearchDialog, for searching images by tag.
+ *
+ * @author <a href="https://github.com/scorbo2">scorbo2</a>
+ */
+public class SearchAction extends EnhancedAction {
+
+    private static final String NAME = "Search...";
 
     public SearchAction() {
-        super("Search...");
+        super(NAME);
     }
 
     @Override

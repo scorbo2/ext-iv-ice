@@ -1,12 +1,15 @@
 package ca.corbett.imageviewer.extensions.ice;
 
 import ca.corbett.extensions.AppExtensionInfo;
+import ca.corbett.extras.EnhancedAction;
 import ca.corbett.extras.LookAndFeelManager;
 import ca.corbett.extras.RedispatchingMouseAdapter;
+import ca.corbett.extras.io.KeyStrokeManager;
 import ca.corbett.extras.properties.AbstractProperty;
 import ca.corbett.extras.properties.BooleanProperty;
 import ca.corbett.extras.properties.ComboProperty;
 import ca.corbett.extras.properties.IntegerProperty;
+import ca.corbett.extras.properties.KeyStrokeProperty;
 import ca.corbett.extras.properties.PropertiesManager;
 import ca.corbett.extras.properties.ShortTextProperty;
 import ca.corbett.imageviewer.AppConfig;
@@ -14,10 +17,10 @@ import ca.corbett.imageviewer.ImageOperation;
 import ca.corbett.imageviewer.extensions.ImageViewerExtension;
 import ca.corbett.imageviewer.extensions.ice.actions.RandomImageSetAction;
 import ca.corbett.imageviewer.extensions.ice.actions.ScanDirAction;
+import ca.corbett.imageviewer.extensions.ice.actions.SearchAction;
 import ca.corbett.imageviewer.extensions.ice.actions.TagDirStatsAction;
 import ca.corbett.imageviewer.extensions.ice.actions.TagMultipleImagesAction;
 import ca.corbett.imageviewer.extensions.ice.actions.TagSingleImageAction;
-import ca.corbett.imageviewer.extensions.ice.actions.SearchAction;
 import ca.corbett.imageviewer.extensions.ice.actions.TagStatsAction;
 import ca.corbett.imageviewer.extensions.ice.ui.QuickTagPanel;
 import ca.corbett.imageviewer.extensions.ice.ui.TagPreviewPanel;
@@ -28,17 +31,12 @@ import org.apache.commons.io.FilenameUtils;
 
 import javax.swing.JComponent;
 import javax.swing.JLabel;
-import javax.swing.JMenu;
-import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.KeyStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.FlowLayout;
-import java.awt.event.InputEvent;
-import java.awt.event.KeyEvent;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -82,6 +80,7 @@ public class IceExtension extends ImageViewerExtension {
     public static final String quickTagPanelWidthProp = "ICE.General.quickTagPanelWidth";
     public static final String fontSizeProp = "Thumbnails.Companion files.linkFontSize";
     public static final String quickTagSourceProp = "Hidden.quickTags.source";
+    public static final String quickTagShortcutProp = AppConfig.KEYSTROKE_PREFIX + "ICE.quickTagPanel";
 
     private final List<TagPreviewPanel> tagPreviewPanels = new ArrayList<>();
     private final List<QuickTagPanel> quickTagPanels = new ArrayList<>();
@@ -117,6 +116,10 @@ public class IceExtension extends ImageViewerExtension {
         list.add(new IntegerProperty(fontSizeProp, "Hyperlink font size", 10, 8, 16, 1));
         list.add(new BooleanProperty(TagIndex.PROP_NAME, "Enable tag index for faster searches", true));
         list.add(new ShortTextProperty(quickTagSourceProp, "quickTagsSource", QuickTagPanel.DEFAULT_SOURCE_NAME).setExposed(false));
+        list.add(new KeyStrokeProperty(quickTagShortcutProp, "Image tag dialog:",
+                                       KeyStrokeManager.parseKeyStroke("Ctrl+G"),
+                                       TagSingleImageAction.getInstance())
+                         .setAllowBlank(true));
         return list;
     }
 
@@ -196,58 +199,37 @@ public class IceExtension extends ImageViewerExtension {
     }
 
     /**
-     * Returns the ICE top-level menu which is to be added to the application's main menu bar.
+     * We have a top-level "ICE" menu with various actions in it.
+     * This menu is presented in all browse modes.
      */
     @Override
-    public List<JMenu> getTopLevelMenus(MainWindow.BrowseMode browseMode) {
-        JMenu iceMenu = new JMenu("ICE");
-        iceMenu.setMnemonic(KeyEvent.VK_I);
-
-        JMenuItem searchItem = new JMenuItem(new SearchAction());
-        iceMenu.add(searchItem);
-
-        JMenuItem tagSingleImageItem = new JMenuItem(new TagSingleImageAction());
-        tagSingleImageItem.setMnemonic(KeyEvent.VK_G);
-        tagSingleImageItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_G, InputEvent.CTRL_DOWN_MASK));
-        iceMenu.add(tagSingleImageItem);
-
-        JMenuItem tagMultiImagesItem = new JMenuItem(new TagMultipleImagesAction("Tag images..."));
-        iceMenu.add(tagMultiImagesItem);
-
-        if (browseMode == MainWindow.BrowseMode.FILE_SYSTEM) {
-            if (TagIndex.isEnabled()) {
-                JMenuItem scanDirItem = new JMenuItem(new ScanDirAction("Tag scan: current directory", false));
-                iceMenu.add(scanDirItem);
-
-                JMenuItem scanDirItemRecursive = new JMenuItem(
-                        new ScanDirAction("Tag scan: current directory recursively", true));
-                iceMenu.add(scanDirItemRecursive);
-            }
-        }
-
-        iceMenu.add(new TagStatsAction());
-        if (browseMode == MainWindow.BrowseMode.FILE_SYSTEM) {
-            iceMenu.add(new JMenuItem(new TagDirStatsAction()));
-            iceMenu.add(new JMenuItem(new RandomImageSetAction()));
-        }
-
-        return List.of(iceMenu);
+    public List<String> getTopLevelMenus(MainWindow.BrowseMode browseMode) {
+        return List.of("ICE");
     }
 
-    /**
-     * I wanted to use ctrl+t for "tag" but it was already in use by the
-     * image transform extension (ctrl+t for "transform"). One day I'll
-     * make extension keyboard shortcuts user-configurable.
-     */
     @Override
-    public boolean handleKeyboardShortcut(KeyEvent e) {
-        if (e.getKeyCode() == KeyEvent.VK_G) {
-            if ((e.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) > 0) {
-                new TagSingleImageAction().actionPerformed(null);
-                return true;
+    public List<EnhancedAction> getMenuActions(String topLevelMenu, MainWindow.BrowseMode browseMode) {
+        List<EnhancedAction> actions = new ArrayList<>();
+
+        if (topLevelMenu.equals("ICE")) {
+            actions.add(new SearchAction());
+            actions.add(TagSingleImageAction.getInstance());
+            actions.add(new TagMultipleImagesAction());
+
+            if (browseMode == MainWindow.BrowseMode.FILE_SYSTEM) {
+                actions.add(new ScanDirAction("Tag scan: current directory", false));
+                actions.add(new ScanDirAction("Tag scan: current directory recursively", true));
+            }
+
+            actions.add(new TagStatsAction());
+
+            if (browseMode == MainWindow.BrowseMode.FILE_SYSTEM) {
+                actions.add(new TagDirStatsAction());
+                actions.add(new RandomImageSetAction());
             }
         }
-        return false;
+
+        return actions;
     }
 
     /**

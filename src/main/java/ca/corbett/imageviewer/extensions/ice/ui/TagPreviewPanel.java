@@ -9,7 +9,6 @@ import ca.corbett.imageviewer.extensions.ice.actions.TagSingleImageAction;
 import ca.corbett.imageviewer.ui.ImageInstance;
 import ca.corbett.imageviewer.ui.MainWindow;
 
-import javax.swing.BorderFactory;
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -39,7 +38,7 @@ public class TagPreviewPanel extends JPanel {
             public void mouseClicked(MouseEvent e) {
                 ImageInstance currentImage = MainWindow.getInstance().getSelectedImage();
                 if (! currentImage.isEmpty()) {
-                    new TagSingleImageAction().actionPerformed(null);
+                    TagSingleImageAction.getInstance().actionPerformed(null);
                 }
             }
         });
