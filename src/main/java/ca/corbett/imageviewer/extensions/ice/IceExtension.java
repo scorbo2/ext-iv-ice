@@ -79,7 +79,8 @@ public class IceExtension extends ImageViewerExtension {
     public static final String quickTagPanelPositionProp = "ICE.General.quickTagPanelPosition";
     public static final String quickTagPanelWidthProp = "ICE.General.quickTagPanelWidth";
     public static final String fontSizeProp = "Thumbnails.Companion files.linkFontSize";
-    public static final String quickTagSourceProp = "Hidden.quickTags.source";
+    public static final String quickTagLeftSourceProp = "Hidden.quickTagsLeft.source";
+    public static final String quickTagRightSourceProp = "Hidden.quickTagsRight.source";
     public static final String quickTagShortcutProp = AppConfig.KEYSTROKE_PREFIX + "ICE.quickTagPanel";
 
     private final List<TagPreviewPanel> tagPreviewPanels = new ArrayList<>();
@@ -115,7 +116,10 @@ public class IceExtension extends ImageViewerExtension {
         list.add(new IntegerProperty(quickTagPanelWidthProp, "Quick tag panel width:", 200, 120, 300, 10));
         list.add(new IntegerProperty(fontSizeProp, "Hyperlink font size", 10, 8, 16, 1));
         list.add(new BooleanProperty(TagIndex.PROP_NAME, "Enable tag index for faster searches", true));
-        list.add(new ShortTextProperty(quickTagSourceProp, "quickTagsSource", QuickTagPanel.DEFAULT_SOURCE_NAME).setExposed(false));
+        list.add(new ShortTextProperty(quickTagLeftSourceProp, "quickTagsLeftSource",
+                                       QuickTagPanel.DEFAULT_SOURCE_NAME).setExposed(false));
+        list.add(new ShortTextProperty(quickTagRightSourceProp, "quickTagsRightSource",
+                                       QuickTagPanel.DEFAULT_SOURCE_NAME).setExposed(false));
         list.add(new KeyStrokeProperty(quickTagShortcutProp, "Image tag dialog:",
                                        KeyStrokeManager.parseKeyStroke("Ctrl+G"),
                                        TagSingleImageAction.getInstance())
@@ -187,7 +191,7 @@ public class IceExtension extends ImageViewerExtension {
         }
 
         if (getQuickTagPositionFromConfig().contains(position)) {
-            QuickTagPanel panel = new QuickTagPanel(); // create a new one on each request
+            QuickTagPanel panel = new QuickTagPanel(position); // create a new one on each request
             quickTagPanels.add(panel);
             JScrollPane scrollPane = new JScrollPane(panel);
             scrollPane.getVerticalScrollBar().setUnitIncrement(10);
