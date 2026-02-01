@@ -73,6 +73,7 @@ class TagIndexTest {
     public void tearDown() {
         tagIndex.clear(); // Clean up after each test
         tagIndex.setAppConfigProvider(null); // Remove custom AppConfig provider
+        enabledProp.setValue(true); // Reset to enabled if any test disabled it
     }
 
     @Test
