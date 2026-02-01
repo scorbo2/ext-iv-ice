@@ -5,6 +5,7 @@ import ca.corbett.extras.io.FileSystemUtil;
 import ca.corbett.extras.properties.BooleanProperty;
 import ca.corbett.extras.properties.PropertiesManager;
 import ca.corbett.imageviewer.AppConfig;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -66,6 +67,12 @@ class TagIndexTest {
         tagIndex.setIndexFile(tempIndexFile);
         
         tagIndex.clear(); // Ensure clean state
+    }
+
+    @AfterEach
+    public void tearDown() {
+        tagIndex.clear(); // Clean up after each test
+        tagIndex.setAppConfigProvider(null); // Remove custom AppConfig provider
     }
 
     @Test

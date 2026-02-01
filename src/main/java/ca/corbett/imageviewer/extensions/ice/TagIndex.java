@@ -112,11 +112,12 @@ public class TagIndex {
      * Package-protected setter for unit tests.
      * Provide a mocked AppConfig instance to get around the tight coupling
      * between this class and AppConfig singleton.
+     * Setting null restores the default provider.
      *
      * @param provider A functional interface to provide an AppConfig instance.
      */
     void setAppConfigProvider(AppConfigProvider provider) {
-        appConfigProvider = provider;
+        appConfigProvider = provider == null ? AppConfig::getInstance : provider;
     }
 
     /**
