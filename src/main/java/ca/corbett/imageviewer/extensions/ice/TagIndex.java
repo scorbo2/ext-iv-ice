@@ -120,6 +120,27 @@ public class TagIndex {
     }
 
     /**
+     * Package-protected setter for unit tests.
+     * Allows tests to specify a different persistence location to avoid overwriting
+     * the actual tagIndex.ice file on the machine running the tests.
+     *
+     * @param file The file to use for persistence.
+     */
+    void setIndexFile(File file) {
+        if (file.getParentFile() != null && !file.getParentFile().exists()) {
+            file.getParentFile().mkdirs();
+        }
+        // Use reflection to modify the final field for testing purposes
+        try {
+            java.lang.reflect.Field indexFileField = TagIndex.class.getDeclaredField("indexFile");
+            indexFileField.setAccessible(true);
+            indexFileField.set(this, file);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException("Failed to set index file for testing", e);
+        }
+    }
+
+    /**
      * Queries AppConfig to see if we are enabled. The user can disable tag indexing
      * in the application settings dialog.
      *

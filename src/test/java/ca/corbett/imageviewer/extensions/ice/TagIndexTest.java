@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Unit tests for the TagIndex class.
- * 
+ * <p>
  * TagIndex methods require AppConfig to be initialized (specifically the isEnabled() check).
  * We use Mockito to mock AppConfig and inject it via the AppConfigProvider pattern,
  * allowing us to test the full functionality of TagIndex without requiring the entire
@@ -60,6 +60,11 @@ class TagIndexTest {
         // Get a fresh instance for each test and inject our mocked AppConfig
         tagIndex = TagIndex.getInstance();
         tagIndex.setAppConfigProvider(() -> appConfig);
+        
+        // Set index file to temp directory to avoid overwriting real tagIndex.ice
+        File tempIndexFile = new File(tempDir.toFile(), "tagIndex.ice");
+        tagIndex.setIndexFile(tempIndexFile);
+        
         tagIndex.clear(); // Ensure clean state
     }
 
@@ -508,6 +513,7 @@ class TagIndexTest {
     // Note: TagList.fromFile() reads one tag per line, not comma-separated
     private File createTestTagFile(String filename, String content) throws IOException {
         File tagFile = new File(tempDir.toFile(), filename);
+        tagFile.deleteOnExit(); // Clean up after tests complete
         // Convert comma-separated tags to line-separated format
         String[] tags = content.split(",\\s*");
         StringBuilder fileContent = new StringBuilder();
