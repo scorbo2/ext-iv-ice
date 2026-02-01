@@ -24,6 +24,8 @@ import ca.corbett.imageviewer.extensions.ice.actions.TagSingleImageAction;
 import ca.corbett.imageviewer.extensions.ice.actions.TagStatsAction;
 import ca.corbett.imageviewer.extensions.ice.ui.QuickTagPanel;
 import ca.corbett.imageviewer.extensions.ice.ui.TagPreviewPanel;
+import ca.corbett.imageviewer.extensions.ice.ui.formfield.ReservedKeyStrokeWorkaround2;
+import ca.corbett.imageviewer.extensions.ice.ui.formfield.TagHotkeyProperty;
 import ca.corbett.imageviewer.ui.ImageInstance;
 import ca.corbett.imageviewer.ui.MainWindow;
 import ca.corbett.imageviewer.ui.ThumbPanel;
@@ -82,6 +84,7 @@ public class IceExtension extends ImageViewerExtension {
     public static final String quickTagLeftSourceProp = "Hidden.quickTagsLeft.source";
     public static final String quickTagRightSourceProp = "Hidden.quickTagsRight.source";
     public static final String quickTagShortcutProp = AppConfig.KEYSTROKE_PREFIX + "ICE.quickTagPanel";
+    public static final String tagHotkeyPropPrefix = AppConfig.KEYSTROKE_PREFIX + "ICE.tagHotKey";
 
     private final List<TagPreviewPanel> tagPreviewPanels = new ArrayList<>();
     private final List<QuickTagPanel> quickTagPanels = new ArrayList<>();
@@ -124,6 +127,26 @@ public class IceExtension extends ImageViewerExtension {
                                        KeyStrokeManager.parseKeyStroke("Ctrl+G"),
                                        TagSingleImageAction.getInstance())
                          .setAllowBlank(true));
+
+        // Add a few configurable hotkeys for commonly-used tags:
+        for (int i = 1; i <= 8; i++) {
+            // Why 8? I dunno, seems like a reasonable number.
+            // Too many and the properties form will scroll vertically too much.
+            // Too few and there's not enough value in this feature.
+            // We'll use Ctrl+F1 through Ctrl+F8 as the default hotkeys, and there
+            // will be no tags assigned by default. The user can configure
+            // as needed, or blank them all out if they don't want to use this feature.
+            String helpText = "<html>Assign commonly used tags to a hotkey for<br>"
+                    + "quick application to the currently selected image.<br>" +
+                    "You can comma-separate the list to set more than one tag at a time.<br>" +
+                    "The tags are added to the image's tag list, unless they are already there.</html>";
+            list.add(new TagHotkeyProperty(tagHotkeyPropPrefix + i, "Tag hotkey " + i + ":")
+                             .setKeyStroke(KeyStrokeManager.parseKeyStroke("Ctrl+F" + i))
+                             .setAllowBlank(true)
+                             .setHelpText(helpText)
+                             .addFormFieldGenerationListener(new ReservedKeyStrokeWorkaround2()));
+        }
+
         return list;
     }
 
