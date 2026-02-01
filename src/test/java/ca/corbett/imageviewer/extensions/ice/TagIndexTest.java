@@ -43,7 +43,7 @@ class TagIndexTest {
     private TagIndex tagIndex;
 
     @BeforeAll
-    public static void setup() {
+    public static void setUpClass() {
         // Mock AppConfig so that TagIndex.isEnabled() always returns true for our tests
         appConfig = Mockito.mock(AppConfig.class);
         propsManager = Mockito.mock(PropertiesManager.class);
@@ -57,7 +57,7 @@ class TagIndexTest {
     }
 
     @BeforeEach
-    public void setUp() {
+    public void setUpTagIndex() {
         // Get a fresh instance for each test and inject our mocked AppConfig
         tagIndex = TagIndex.getInstance();
         tagIndex.setAppConfigProvider(() -> appConfig);
@@ -153,7 +153,7 @@ class TagIndexTest {
         tagIndex.addOrUpdateEntry(imageFile, tagFile);
 
         // WHEN we modify the tag file and update
-        FileSystemUtil.writeStringToFile("hello, universe", tagFile);
+        FileSystemUtil.writeStringToFile("hello" + System.lineSeparator() + "universe", tagFile);
         long currentLastModified = tagFile.lastModified();
         boolean lastModifiedUpdated = tagFile.setLastModified(currentLastModified + 1000L); // add 1 second
         assertTrue(lastModifiedUpdated);
@@ -264,6 +264,7 @@ class TagIndexTest {
         tagIndex.addOrUpdateEntry(imageFile, tagFile);
 
         // WHEN the tag file is modified and we check if it's up to date
+        FileSystemUtil.writeStringToFile("hello" + System.lineSeparator() + "universe", tagFile);
         long currentLastModified = tagFile.lastModified();
         boolean lastModifiedUpdated = tagFile.setLastModified(currentLastModified + 1000L); // add 1 second
         assertTrue(lastModifiedUpdated);
