@@ -42,7 +42,7 @@ import java.util.List;
  *         parseable shortcut string, as defined by KeyStrokeManager.</li>
  *      <li>The tagField is optional. It can be blanked out.</li>
  *      <li>If tagField has a value, it must be a valid tag string
- *         as defined by TagList.isValidTagString().</li>
+ *         as defined by TagList.isValidNonEmptyTagString().</li>
  * </ul>
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
@@ -191,7 +191,7 @@ public class TagHotkeyField extends FormField {
      *         parseable shortcut string, as defined by KeyStrokeManager.</li>
      *      <li>The tagField is optional. It can be blanked out.</li>
      *      <li>If tagField has a value, it must be a valid tag string
-     *         as defined by TagList.isValidTagString().</li>
+     *         as defined by TagList.isValidNonEmptyTagString().</li>
      * </ul>
      */
     private class HotkeyValidator implements FieldValidator<TagHotkeyField> {
@@ -206,7 +206,7 @@ public class TagHotkeyField extends FormField {
 
             // Check tagField first:
             if (!tagText.isBlank()) {
-                if (!TagList.isValidTagString(tagText)) {
+                if (!TagList.isValidNonEmptyTagString(tagText)) {
                     return ValidationResult.invalid(TagList.TAG_FORMAT_ERROR);
                 }
 

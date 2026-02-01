@@ -160,12 +160,12 @@ public class TagList {
     }
 
     /**
-     * Reports whether the given tag string is free of disallowed characters.
+     * Reports whether the given tag string is non-empty and free of disallowed characters.
      *
      * @param tagString Any candidate tag string, comma-separated or a single tag.
-     * @return true if the tag string is valid, false if it contains disallowed characters.
+     * @return true if the tag string is non-empty and valid, false if it is null, blank, or contains disallowed characters.
      */
-    public static boolean isValidTagString(String tagString) {
+    public static boolean isValidNonEmptyTagString(String tagString) {
         if (tagString == null || tagString.isBlank()) {
             return false;
         }
