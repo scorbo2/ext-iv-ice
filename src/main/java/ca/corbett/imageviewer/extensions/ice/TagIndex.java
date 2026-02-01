@@ -55,7 +55,7 @@ public class TagIndex {
     AppConfigProvider appConfigProvider = AppConfig::getInstance;
 
     private static TagIndex instance;
-    private final File indexFile;
+    private File indexFile;
     private final Map<String, TagIndexEntry> indexEntries;
 
     protected TagIndex() {
@@ -130,14 +130,7 @@ public class TagIndex {
         if (file.getParentFile() != null && !file.getParentFile().exists()) {
             file.getParentFile().mkdirs();
         }
-        // Use reflection to modify the final field for testing purposes
-        try {
-            java.lang.reflect.Field indexFileField = TagIndex.class.getDeclaredField("indexFile");
-            indexFileField.setAccessible(true);
-            indexFileField.set(this, file);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new RuntimeException("Failed to set index file for testing", e);
-        }
+        indexFile = file;
     }
 
     /**
