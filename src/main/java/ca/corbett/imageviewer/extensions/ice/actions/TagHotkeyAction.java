@@ -52,6 +52,7 @@ public class TagHotkeyAction extends EnhancedAction {
     public TagHotkeyAction setTagList(TagList tagList) {
         this.tagList.clear();
         this.tagList.addAll(tagList == null ? new TagList() : tagList);
+        warningIssued = false;
         return this;
     }
 
