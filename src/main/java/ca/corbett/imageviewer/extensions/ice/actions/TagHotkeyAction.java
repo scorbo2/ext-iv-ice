@@ -74,7 +74,7 @@ public class TagHotkeyAction extends EnhancedAction {
         // Make sure we have a selected image:
         ImageInstance currentImage = MainWindow.getInstance().getSelectedImage();
         if (currentImage.isEmpty()) {
-            MainWindow.getInstance().showMessageDialog(NAME, "Nothing selected.");
+            MainWindow.getInstance().showMessageDialog(getName(), "Nothing selected.");
             return;
         }
 
