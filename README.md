@@ -16,7 +16,8 @@ But there are actually quite a few additional features now available in the appl
 
 ### Tagging a single image
 
-The first thing we can do is hit Ctrl+G to bring up the tag edit dialog for the currently selected image:
+The first thing we can do is hit Ctrl+G (or whatever shortcut you have configured in the application settings dialog)
+to bring up the tag edit dialog for the currently selected image:
 
 ![Tag edit dialog](docs/screenshot02.jpg)
 
@@ -121,7 +122,7 @@ remove the extension, revisit the extension manager dialog, select "ICE" in the 
 ### Option 2: Manual download
 
 You can manually download the extension jar: 
-[ext-iv-ice-2.4.0.jar](https://www.corbett.ca/apps/ImageViewer/extensions/2.4/ext-iv-ice-2.4.0.jar)
+[ext-iv-ice-3.0.0.jar](https://www.corbett.ca/apps/ImageViewer/extensions/3.0/ext-iv-ice-3.0.0.jar)
 
 Save it to your ~/.ImageViewer/extensions directory and restart the application.
 
@@ -136,7 +137,7 @@ mvn package
 
 # Copy the result to the extensions directory:
 cd target
-cp ext-iv-ice-2.4.0.jar ~/.ImageViewer/extensions
+cp ext-iv-ice-3.0.0.jar ~/.ImageViewer/extensions
 ```
 
 ## License

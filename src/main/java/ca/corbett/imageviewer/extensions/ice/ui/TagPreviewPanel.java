@@ -1,16 +1,22 @@
 package ca.corbett.imageviewer.extensions.ice.ui;
 
+import ca.corbett.extras.io.KeyStrokeManager;
+import ca.corbett.extras.properties.AbstractProperty;
+import ca.corbett.extras.properties.KeyStrokeProperty;
 import ca.corbett.forms.Alignment;
 import ca.corbett.forms.FormPanel;
 import ca.corbett.forms.Margins;
 import ca.corbett.forms.fields.LongTextField;
+import ca.corbett.imageviewer.AppConfig;
+import ca.corbett.imageviewer.Version;
+import ca.corbett.imageviewer.extensions.ice.IceExtension;
 import ca.corbett.imageviewer.extensions.ice.TagList;
 import ca.corbett.imageviewer.extensions.ice.actions.TagSingleImageAction;
 import ca.corbett.imageviewer.ui.ImageInstance;
 import ca.corbett.imageviewer.ui.MainWindow;
 
-import javax.swing.BorderFactory;
 import javax.swing.JPanel;
+import javax.swing.KeyStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.event.MouseAdapter;
@@ -33,18 +39,53 @@ public class TagPreviewPanel extends JPanel {
         textField.setEnabled(false);
         this.setBackground(Color.GREEN);
         textField.getTextArea().setColumns(10); // dumb! remove once swing-extras #119 fix is available in 2.5 release
-        textField.setHelpText("Read-only display. Press Ctrl+G to edit tags.");
+        textField.setHelpText(getHelpText());
         textField.getTextArea().addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 ImageInstance currentImage = MainWindow.getInstance().getSelectedImage();
                 if (! currentImage.isEmpty()) {
-                    new TagSingleImageAction().actionPerformed(null);
+                    TagSingleImageAction.getInstance().actionPerformed(null);
                 }
             }
         });
         formPanel.add(textField);
         add(formPanel, BorderLayout.CENTER);
+    }
+
+    /**
+     * Returns helpful text showing the currently-configured keyboard shortcut for the tag dialog.
+     */
+    private String getHelpText() {
+        KeyStroke ks;
+
+        // Try to get it from AppConfig first:
+        // (This is the normal case, after initial startup)
+        AbstractProperty prop = AppConfig.getInstance().getPropertiesManager()
+                                         .getProperty(IceExtension.quickTagShortcutProp);
+        if (prop != null) {
+            ks = ((KeyStrokeProperty)prop).getKeyStroke();
+        }
+
+        // On initial startup, this class's constructor is invoked before AppConfig queries our properties,
+        // so AppConfig may wrongly return null above. In that case, we can try peeking directly
+        // into AppConfig's persistent storage. This feels a bit hacky, but it *should* only happen once on startup.
+        else {
+            String keystrokeStr = AppConfig.peek(Version.APP_CONFIG_FILE,
+                                                 IceExtension.quickTagShortcutProp + ".keyStroke");
+            // It may legitimately be null here, if the user has unassigned the shortcut:
+            // (or if this is a first run on a brand-new install, but that will fix itself on second run)
+            // (yeah, this feels hacky too, but oh well)
+            ks = keystrokeStr == null ? null : KeyStrokeManager.parseKeyStroke(keystrokeStr);
+        }
+
+        // At this point, we either have a valid keystroke, or there isn't one assigned to our action:
+        if (ks != null) {
+            return "Read-only display. Press " + KeyStrokeManager.keyStrokeToString(ks) + " to edit tags.";
+        }
+        else {
+            return "Read-only display. Use the tag dialog to edit tags."; // But you have to bring it up yourself!
+        }
     }
 
     public void clearTags() {

@@ -1,6 +1,7 @@
 package ca.corbett.imageviewer.extensions.ice.ui.dialogs;
 
 import ca.corbett.extras.MessageUtil;
+import ca.corbett.extras.image.ImageUtil;
 import ca.corbett.extras.io.FileSystemUtil;
 import ca.corbett.extras.progress.MultiProgressDialog;
 import ca.corbett.extras.progress.SimpleProgressWorker;
@@ -334,7 +335,10 @@ public class RandomImageSetDialog extends JDialog {
             int taggedCount = 0;
             int untaggedCount = 0;
 
-            List<File> allFiles = FileSystemUtil.findFiles(dir, recursive, ThumbContainerPanel.getImageExtensions());
+            List<File> allFiles = FileSystemUtil.findFiles(dir, recursive)
+                                                .stream()
+                                                .filter(ImageUtil::isImageFile)
+                                                .toList();
             fireProgressBegins(allFiles.size());
 
             try {
