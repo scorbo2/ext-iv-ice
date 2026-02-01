@@ -33,7 +33,8 @@ public class ReservedKeyStrokeWorkaround2 implements FormFieldGenerationListener
             return;
         }
 
-        hotkeyField.setReservedKeyStrokes(AppConfig.RESERVED_KEYSTROKES);
+        String reservedMsg = hotkeyField.getReservedKeyStrokeMsg();
+        hotkeyField.setReservedKeyStrokes(AppConfig.RESERVED_KEYSTROKES, reservedMsg);
     }
 }
 
