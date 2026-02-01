@@ -99,7 +99,7 @@ public class TagHotkeyProperty extends KeyStrokeProperty {
 
     /**
      * We need to completely override the parent class's method here to return
-     * our own TagHokeyField instead of a KeyStrokeField.
+     * our own TagHotkeyField instead of a KeyStrokeField.
      * <p>
      * The returned field is equipped with a built-in FieldValidator
      * to ensure that the value is valid, and that the selected hotkey
