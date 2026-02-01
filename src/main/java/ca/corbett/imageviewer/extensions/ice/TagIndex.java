@@ -5,15 +5,12 @@ import ca.corbett.imageviewer.AppConfig;
 import ca.corbett.imageviewer.Version;
 import ca.corbett.imageviewer.extensions.ice.io.TagIndexPersistence;
 import ca.corbett.imageviewer.extensions.ice.threads.ScanThread;
-import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -44,6 +41,18 @@ public class TagIndex {
         SkippedBecauseUpToDate,
         SkippedBecauseDisabled
     }
+
+    /**
+     * A package-protected functional interface to provide AppConfig instance
+     * for unit tests.
+     */
+    @FunctionalInterface
+    interface AppConfigProvider {
+        AppConfig getAppConfig();
+    }
+
+    // Default provider - normal operation uses AppConfig singleton:
+    static AppConfigProvider appConfigProvider = AppConfig::getInstance;
 
     private static TagIndex instance;
     private final File indexFile;
@@ -99,8 +108,26 @@ public class TagIndex {
                        .collect(Collectors.toList());
     }
 
+    /**
+     * Package-protected setter for unit tests.
+     * Provide a mocked AppConfig instance to get around the tight coupling
+     * between this class and AppConfig singleton.
+     *
+     * @param provider A functional interface to provide an AppConfig instance.
+     */
+    void setAppConfigProvider(AppConfigProvider provider) {
+        appConfigProvider = provider;
+    }
+
+    /**
+     * Queries AppConfig to see if we are enabled. The user can disable tag indexing
+     * in the application settings dialog.
+     *
+     * @return true if tag indexing is enabled, false if disabled.
+     */
     public static boolean isEnabled() {
-        return ((BooleanProperty)AppConfig.getInstance().getPropertiesManager().getProperty(PROP_NAME)).getValue();
+        AppConfig appConfig = appConfigProvider.getAppConfig();
+        return ((BooleanProperty)appConfig.getPropertiesManager().getProperty(PROP_NAME)).getValue();
     }
 
     public EntryAddResult addOrUpdateEntry(File imageFile, File tagFile) {

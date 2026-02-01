@@ -2,18 +2,26 @@ package ca.corbett.imageviewer.extensions.ice;
 
 import ca.corbett.extensions.AppExtensionInfo;
 import ca.corbett.extras.io.FileSystemUtil;
-import ca.corbett.imageviewer.extensions.ice.io.TagIndexPersistence;
+import ca.corbett.extras.properties.BooleanProperty;
+import ca.corbett.extras.properties.PropertiesManager;
+import ca.corbett.imageviewer.AppConfig;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Unit tests for the TagIndex class.
@@ -32,10 +40,21 @@ class TagIndexTest {
     @TempDir
     Path tempDir;
 
+    private static AppConfig appConfig;
+    private static BooleanProperty enabledProp;
+    private static PropertiesManager propsManager;
     private TagIndex tagIndex;
 
     @BeforeAll
     public static void setup() {
+        // Our test object will frequently query AppConfig for the isEnabled property.
+        // Let's mock that out so that it is always enabled for our tests.
+        appConfig = Mockito.mock(AppConfig.class);
+        propsManager = Mockito.mock(PropertiesManager.class);
+        enabledProp = new BooleanProperty(TagIndex.PROP_NAME, "isEnabled", true); // always enabled for tests
+        Mockito.when(appConfig.getPropertiesManager()).thenReturn(propsManager);
+        Mockito.when(propsManager.getProperty(TagIndex.PROP_NAME)).thenReturn(enabledProp);
+
         IceExtension.extInfo = new AppExtensionInfo.Builder("Test")
                 .setVersion("2.2.1")
                 .build();
@@ -45,6 +64,7 @@ class TagIndexTest {
     public void setUp() {
         // Get a fresh instance for each test
         tagIndex = TagIndex.getInstance();
+        tagIndex.setAppConfigProvider(() -> appConfig); // Use our mocked AppConfig
         tagIndex.clear(); // Ensure clean state
     }
 
