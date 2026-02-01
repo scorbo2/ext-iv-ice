@@ -8,6 +8,7 @@ import ca.corbett.imageviewer.ui.ImageInstance;
 import ca.corbett.imageviewer.ui.MainWindow;
 import org.apache.commons.io.FilenameUtils;
 
+import javax.swing.KeyStroke;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.util.logging.Logger;
@@ -65,9 +66,10 @@ public class TagHotkeyAction extends EnhancedAction {
     }
 
     @Override
-    public void setAcceleratorKey(String acceleratorKey) {
+    public EnhancedAction setAcceleratorKey(KeyStroke acceleratorKey) {
         super.setAcceleratorKey(acceleratorKey);
         warningIssued = false;
+        return this;
     }
 
     @Override
