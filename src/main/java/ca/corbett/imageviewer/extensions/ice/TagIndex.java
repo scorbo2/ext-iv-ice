@@ -52,7 +52,7 @@ public class TagIndex {
     }
 
     // Default provider - normal operation uses AppConfig singleton:
-    static AppConfigProvider appConfigProvider = AppConfig::getInstance;
+    AppConfigProvider appConfigProvider = AppConfig::getInstance;
 
     private static TagIndex instance;
     private final File indexFile;
@@ -147,7 +147,7 @@ public class TagIndex {
      * @return true if tag indexing is enabled, false if disabled.
      */
     public static boolean isEnabled() {
-        AppConfig appConfig = appConfigProvider.getAppConfig();
+        AppConfig appConfig = getInstance().appConfigProvider.getAppConfig();
         return ((BooleanProperty)appConfig.getPropertiesManager().getProperty(PROP_NAME)).getValue();
     }
 
