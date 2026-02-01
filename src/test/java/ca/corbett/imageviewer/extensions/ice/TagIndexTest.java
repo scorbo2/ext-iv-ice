@@ -5,6 +5,7 @@ import ca.corbett.extras.io.FileSystemUtil;
 import ca.corbett.extras.properties.BooleanProperty;
 import ca.corbett.extras.properties.PropertiesManager;
 import ca.corbett.imageviewer.AppConfig;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,6 +41,7 @@ class TagIndexTest {
     private static BooleanProperty enabledProp;
     private static PropertiesManager propsManager;
     private TagIndex tagIndex;
+    private File tempIndexFile;
 
     @BeforeAll
     public static void setup() {
@@ -62,10 +64,17 @@ class TagIndexTest {
         tagIndex.setAppConfigProvider(() -> appConfig);
         
         // Set index file to temp directory to avoid overwriting real tagIndex.ice
-        File tempIndexFile = new File(tempDir.toFile(), "tagIndex.ice");
+        tempIndexFile = new File(tempDir.toFile(), "tagIndex.ice");
         tagIndex.setIndexFile(tempIndexFile);
         
         tagIndex.clear(); // Ensure clean state
+    }
+
+    @AfterEach
+    public void cleanUp() {
+        if (tempIndexFile != null && tempIndexFile.exists()) {
+            tempIndexFile.delete(); // Clean up temp index file after each test
+        }
     }
 
     @Test
