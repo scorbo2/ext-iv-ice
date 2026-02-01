@@ -146,15 +146,17 @@ class TagIndexTest {
     }
 
     @Test
-    public void testAddOrUpdateEntry_withExistingModifiedEntry_shouldReturnExistingEntryUpdated() throws IOException, InterruptedException {
+    public void testAddOrUpdateEntry_withExistingModifiedEntry_shouldReturnExistingEntryUpdated() throws IOException {
         // GIVEN an existing entry in the index
         File imageFile = new File(tempDir.toFile(), "image.jpg");
         File tagFile = createTestTagFile("tag.ice", "hello, world");
         tagIndex.addOrUpdateEntry(imageFile, tagFile);
 
         // WHEN we modify the tag file and update
-        Thread.sleep(10); // Ensure different timestamp
         FileSystemUtil.writeStringToFile("hello, universe", tagFile);
+        long currentLastModified = tagFile.lastModified();
+        boolean lastModifiedUpdated = tagFile.setLastModified(currentLastModified + 1000L); // add 1 second
+        assertTrue(lastModifiedUpdated);
         TagIndex.EntryAddResult result = tagIndex.addOrUpdateEntry(imageFile, tagFile);
 
         // THEN it should indicate the entry was updated
@@ -255,15 +257,16 @@ class TagIndexTest {
     }
 
     @Test
-    public void testIsIndexedAndUpToDate_withOutdatedEntry_shouldUpdateAndReturnTrue() throws IOException, InterruptedException {
+    public void testIsIndexedAndUpToDate_withOutdatedEntry_shouldUpdateAndReturnTrue() throws IOException {
         // GIVEN an indexed entry
         File imageFile = new File(tempDir.toFile(), "image.jpg");
         File tagFile = createTestTagFile("tag.ice", "hello, world");
         tagIndex.addOrUpdateEntry(imageFile, tagFile);
 
         // WHEN the tag file is modified and we check if it's up to date
-        Thread.sleep(10); // Ensure different timestamp
-        FileSystemUtil.writeStringToFile("hello, universe", tagFile);
+        long currentLastModified = tagFile.lastModified();
+        boolean lastModifiedUpdated = tagFile.setLastModified(currentLastModified + 1000L); // add 1 second
+        assertTrue(lastModifiedUpdated);
         boolean result = tagIndex.IsIndexedAndUpToDate(imageFile, tagFile);
 
         // THEN it should update the entry and return true
