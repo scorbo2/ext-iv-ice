@@ -1,5 +1,6 @@
 package ca.corbett.imageviewer.extensions.ice;
 
+import ca.corbett.extras.properties.AbstractProperty;
 import ca.corbett.extras.properties.BooleanProperty;
 import ca.corbett.imageviewer.AppConfig;
 import ca.corbett.imageviewer.Version;
@@ -142,7 +143,11 @@ public class TagIndex {
      */
     public static boolean isEnabled() {
         AppConfig appConfig = getInstance().appConfigProvider.getAppConfig();
-        return ((BooleanProperty)appConfig.getPropertiesManager().getProperty(PROP_NAME)).getValue();
+        AbstractProperty prop = appConfig.getPropertiesManager().getProperty(PROP_NAME);
+        if (prop instanceof BooleanProperty booleanProp) {
+            return booleanProp.getValue();
+        }
+        return false; // If we can't find the property, assume disabled.
     }
 
     public EntryAddResult addOrUpdateEntry(File imageFile, File tagFile) {
