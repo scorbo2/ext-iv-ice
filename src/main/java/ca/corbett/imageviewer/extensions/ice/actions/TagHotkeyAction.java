@@ -34,6 +34,7 @@ public class TagHotkeyAction extends EnhancedAction {
 
     private static final Logger log = Logger.getLogger(TagHotkeyAction.class.getName());
     private final TagList tagList;
+    private boolean warningIssued = false;
 
     /**
      * Creates a TagHotkeyAction with the given name.
@@ -63,11 +64,20 @@ public class TagHotkeyAction extends EnhancedAction {
     }
 
     @Override
+    public void setAcceleratorKey(String acceleratorKey) {
+        super.setAcceleratorKey(acceleratorKey);
+        warningIssued = false;
+    }
+
+    @Override
     public void actionPerformed(ActionEvent e) {
         // If we have no tag list, do nothing:
         if (tagList.isEmpty()) {
-            log.warning(getName()
-                                + " no TagList is set for this hotkey. You can configure this in application settings.");
+            if (!warningIssued) {
+                log.warning(getName()
+                                    + " no TagList is set for this hotkey. You can configure this in application settings.");
+                warningIssued = true;
+            }
             return;
         }
 
