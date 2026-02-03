@@ -1,6 +1,5 @@
 package ca.corbett.imageviewer.extensions.ice.ui.dialogs;
 
-import ca.corbett.extras.LookAndFeelManager;
 import ca.corbett.extras.progress.MultiProgressDialog;
 import ca.corbett.extras.progress.SimpleProgressAdapter;
 import ca.corbett.forms.Alignment;
@@ -14,30 +13,21 @@ import ca.corbett.imageviewer.extensions.ice.TagList;
 import ca.corbett.imageviewer.extensions.ice.threads.BatchTagThread;
 import ca.corbett.imageviewer.ui.MainWindow;
 
-import static ca.corbett.imageviewer.extensions.ice.threads.BatchTagThread.TaggingOperation;
-
 import javax.swing.AbstractAction;
-import javax.swing.Action;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.awt.font.TextAttribute;
-import java.io.File;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Logger;
+
+import static ca.corbett.imageviewer.extensions.ice.threads.BatchTagThread.TaggingOperation;
 
 /**
  * For batch-tagging a directory of images.
@@ -65,7 +55,7 @@ public class TagImagesDialog extends JDialog {
     public TagImagesDialog(String title) {
         super(MainWindow.getInstance(), title, true);
         this.browseMode = MainWindow.getInstance().getBrowseMode();
-        setSize(new Dimension(680, 530));
+        setSize(new Dimension(700, 550));
         setResizable(false);
         setLocationRelativeTo(MainWindow.getInstance());
         setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
