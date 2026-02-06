@@ -15,6 +15,9 @@ import ca.corbett.extras.properties.ShortTextProperty;
 import ca.corbett.imageviewer.AppConfig;
 import ca.corbett.imageviewer.ImageOperation;
 import ca.corbett.imageviewer.extensions.ImageViewerExtension;
+import ca.corbett.imageviewer.extensions.ice.actions.QuickTagToggleLeftAction;
+import ca.corbett.imageviewer.extensions.ice.actions.QuickTagToggleLeftRightAction;
+import ca.corbett.imageviewer.extensions.ice.actions.QuickTagToggleRightAction;
 import ca.corbett.imageviewer.extensions.ice.actions.RandomImageSetAction;
 import ca.corbett.imageviewer.extensions.ice.actions.ScanDirAction;
 import ca.corbett.imageviewer.extensions.ice.actions.SearchAction;
@@ -83,8 +86,13 @@ public class IceExtension extends ImageViewerExtension {
     public static final String fontSizeProp = "Thumbnails.Companion files.linkFontSize";
     public static final String quickTagLeftSourceProp = "Hidden.quickTagsLeft.source";
     public static final String quickTagRightSourceProp = "Hidden.quickTagsRight.source";
-    public static final String quickTagShortcutProp = AppConfig.KEYSTROKE_PREFIX + "ICE.quickTagPanel";
+    public static final String imageTagShortcutProp = AppConfig.KEYSTROKE_PREFIX + "ICE.quickTagPanel";
     public static final String tagHotkeyPropPrefix = AppConfig.KEYSTROKE_PREFIX + "ICE.tagHotKey";
+
+    public static final String QUICK_TAG_TOGGLE = AppConfig.KEYSTROKE_PREFIX + "ICE - QuickTag toggles.";
+    public static final String quickTagShortcutLeftProp = QUICK_TAG_TOGGLE + "quickTagPanelLeft";
+    public static final String quickTagShortcutRightProp = QUICK_TAG_TOGGLE + "quickTagPanelRight";
+    public static final String quickTagShortcutLeftRightProp = QUICK_TAG_TOGGLE + "quickTagPanelLeftRight";
 
     private final List<TagPreviewPanel> tagPreviewPanels = new ArrayList<>();
     private final List<QuickTagPanel> quickTagPanels = new ArrayList<>();
@@ -123,9 +131,21 @@ public class IceExtension extends ImageViewerExtension {
                                        QuickTagPanel.DEFAULT_SOURCE_NAME).setExposed(false));
         list.add(new ShortTextProperty(quickTagRightSourceProp, "quickTagsRightSource",
                                        QuickTagPanel.DEFAULT_SOURCE_NAME).setExposed(false));
-        list.add(new KeyStrokeProperty(quickTagShortcutProp, "Image tag dialog:",
+        list.add(new KeyStrokeProperty(imageTagShortcutProp, "Image tag dialog:",
                                        KeyStrokeManager.parseKeyStroke("Ctrl+G"),
                                        TagSingleImageAction.getInstance())
+                         .setAllowBlank(true));
+        list.add(new KeyStrokeProperty(quickTagShortcutLeftProp, "Toggle left position:",
+                                       KeyStrokeManager.parseKeyStroke("alt+shift+left"),
+                                       QuickTagToggleLeftAction.getInstance())
+                         .setAllowBlank(true));
+        list.add(new KeyStrokeProperty(quickTagShortcutRightProp, "Toggle right position:",
+                                       KeyStrokeManager.parseKeyStroke("alt+shift+right"),
+                                       QuickTagToggleRightAction.getInstance())
+                         .setAllowBlank(true));
+        list.add(new KeyStrokeProperty(quickTagShortcutLeftRightProp, "Toggle both positions:",
+                                       KeyStrokeManager.parseKeyStroke("alt+shift+up"),
+                                       QuickTagToggleLeftRightAction.getInstance())
                          .setAllowBlank(true));
 
         // Add a few configurable hotkeys for commonly-used tags:
@@ -209,6 +229,7 @@ public class IceExtension extends ImageViewerExtension {
     public JComponent getExtraPanelComponent(ExtraPanelPosition position) {
         if (position == getTagPreviewPositionFromConfig()) {
             TagPreviewPanel tagPreviewPanel = new TagPreviewPanel(); // create a new one for each request... other extensions may ask for it
+            tagPreviewPanel.setName("ICE"); // short name in case our component gets added to a tab pane
             tagPreviewPanels.add(tagPreviewPanel);
             return tagPreviewPanel;
         }
@@ -219,6 +240,7 @@ public class IceExtension extends ImageViewerExtension {
             JScrollPane scrollPane = new JScrollPane(panel);
             scrollPane.getVerticalScrollBar().setUnitIncrement(10);
             scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+            scrollPane.setName("ICE"); // short name in case our component gets added to a tab pane
             return scrollPane;
         }
 

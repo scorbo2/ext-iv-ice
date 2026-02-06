@@ -2,6 +2,7 @@ ext-iv-ice Release Notes
 Author: Steve Corbett
 
 Version 3.0.0 [TODO - release date]
+  #51 - Add keyboard shortcuts for quick tag panels
   #43 - Ensure TagPreviewPanel shows correct shortcut
   #40 - Upgrade to ImageViewer 3.0 (major update!)
   #39 - Persist left/right quick tag panels separately

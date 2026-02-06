@@ -62,7 +62,7 @@ public class TagPreviewPanel extends JPanel {
         // Try to get it from AppConfig first:
         // (This is the normal case, after initial startup)
         AbstractProperty prop = AppConfig.getInstance().getPropertiesManager()
-                                         .getProperty(IceExtension.quickTagShortcutProp);
+                                         .getProperty(IceExtension.imageTagShortcutProp);
         if (prop != null) {
             ks = ((KeyStrokeProperty)prop).getKeyStroke();
         }
@@ -72,7 +72,7 @@ public class TagPreviewPanel extends JPanel {
         // into AppConfig's persistent storage. This feels a bit hacky, but it *should* only happen once on startup.
         else {
             String keystrokeStr = AppConfig.peek(Version.APP_CONFIG_FILE,
-                                                 IceExtension.quickTagShortcutProp + ".keyStroke");
+                                                 IceExtension.imageTagShortcutProp + ".keyStroke");
             // It may legitimately be null here, if the user has unassigned the shortcut:
             // (or if this is a first run on a brand-new install, but that will fix itself on second run)
             // (yeah, this feels hacky too, but oh well)
