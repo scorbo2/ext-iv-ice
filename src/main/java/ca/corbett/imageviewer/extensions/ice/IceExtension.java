@@ -90,9 +90,9 @@ public class IceExtension extends ImageViewerExtension {
     public static final String tagHotkeyPropPrefix = AppConfig.KEYSTROKE_PREFIX + "ICE.tagHotKey";
 
     public static final String QUICK_TAG_TOGGLE = AppConfig.KEYSTROKE_PREFIX + "ICE - QuickTag toggles.";
-    public static final String quickTagShortcutLeftProp = QUICK_TAG_TOGGLE + "ICE.quickTagPanelLeft";
-    public static final String quickTagShortcutRightProp = QUICK_TAG_TOGGLE + "ICE.quickTagPanelRight";
-    public static final String quickTagShortcutLeftRightProp = QUICK_TAG_TOGGLE + "ICE.quickTagPanelLeftRight";
+    public static final String quickTagShortcutLeftProp = QUICK_TAG_TOGGLE + "quickTagPanelLeft";
+    public static final String quickTagShortcutRightProp = QUICK_TAG_TOGGLE + "quickTagPanelRight";
+    public static final String quickTagShortcutLeftRightProp = QUICK_TAG_TOGGLE + "quickTagPanelLeftRight";
 
     private final List<TagPreviewPanel> tagPreviewPanels = new ArrayList<>();
     private final List<QuickTagPanel> quickTagPanels = new ArrayList<>();
