@@ -11,8 +11,9 @@ import ca.corbett.imageviewer.ui.actions.ReloadUIAction;
 import java.awt.event.ActionEvent;
 
 /**
- * An action to toggle the visibility of the quick tag panels on both sides.
- * If either panel is currently visible, it will be hidden; if both are hidden, both will be shown.
+ * An action to toggle the visibility of the quick tag panels by inverting the current layout.
+ * If panels are hidden, both are shown; if only the left is shown, it switches to right; if only
+ * the right is shown, it switches to left; and if both are shown, both are hidden.
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  * @since 3.0.0
