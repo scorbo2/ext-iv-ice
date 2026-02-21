@@ -27,7 +27,6 @@ import ca.corbett.imageviewer.extensions.ice.actions.TagSingleImageAction;
 import ca.corbett.imageviewer.extensions.ice.actions.TagStatsAction;
 import ca.corbett.imageviewer.extensions.ice.ui.QuickTagPanel;
 import ca.corbett.imageviewer.extensions.ice.ui.TagPreviewPanel;
-import ca.corbett.imageviewer.extensions.ice.ui.formfield.ReservedKeyStrokeWorkaround2;
 import ca.corbett.imageviewer.extensions.ice.ui.formfield.TagHotkeyProperty;
 import ca.corbett.imageviewer.ui.ImageInstance;
 import ca.corbett.imageviewer.ui.MainWindow;
@@ -80,14 +79,14 @@ public class IceExtension extends ImageViewerExtension {
             "Right",
             "Both left and right"
     };
-    public static final String tagPreviewPanelPositionProp = "ICE.General.tagPreviewPanelPosition";
-    public static final String quickTagPanelPositionProp = "ICE.General.quickTagPanelPosition";
-    public static final String quickTagPanelWidthProp = "ICE.General.quickTagPanelWidth";
+    public static final String tagPreviewPanelPositionProp = "ICE.ICE options.tagPreviewPanelPosition";
+    public static final String quickTagPanelPositionProp = "ICE.ICE options.quickTagPanelPosition";
+    public static final String quickTagPanelWidthProp = "ICE.ICE options.quickTagPanelWidth";
     public static final String fontSizeProp = "Thumbnails.Companion files.linkFontSize";
     public static final String quickTagLeftSourceProp = "Hidden.quickTagsLeft.source";
     public static final String quickTagRightSourceProp = "Hidden.quickTagsRight.source";
-    public static final String imageTagShortcutProp = AppConfig.KEYSTROKE_PREFIX + "ICE.quickTagPanel";
-    public static final String tagHotkeyPropPrefix = AppConfig.KEYSTROKE_PREFIX + "ICE.tagHotKey";
+    public static final String imageTagShortcutProp = AppConfig.KEYSTROKE_PREFIX + "ICE - General.quickTagPanel";
+    public static final String tagHotkeyPropPrefix = AppConfig.KEYSTROKE_PREFIX + "ICE - General.tagHotKey";
 
     public static final String QUICK_TAG_TOGGLE = AppConfig.KEYSTROKE_PREFIX + "ICE - QuickTag toggles.";
     public static final String quickTagShortcutLeftProp = QUICK_TAG_TOGGLE + "quickTagPanelLeft";
@@ -134,19 +133,26 @@ public class IceExtension extends ImageViewerExtension {
         list.add(new KeyStrokeProperty(imageTagShortcutProp, "Image tag dialog:",
                                        KeyStrokeManager.parseKeyStroke("Ctrl+G"),
                                        TagSingleImageAction.getInstance())
-                         .setAllowBlank(true));
+                         .setAllowBlank(true)
+                         .setReservedKeyStrokes(AppConfig.RESERVED_KEYSTROKES));
         list.add(new KeyStrokeProperty(quickTagShortcutLeftProp, "Toggle left position:",
-                                       KeyStrokeManager.parseKeyStroke("alt+shift+left"),
+                                       KeyStrokeManager.parseKeyStroke("ctrl+left"),
                                        QuickTagToggleLeftAction.getInstance())
-                         .setAllowBlank(true));
+                         .setAllowBlank(true)
+                         .setReservedKeyStrokes(AppConfig.RESERVED_KEYSTROKES)
+                         .setHelpText("Toggles a QuickTag panel in the left position."));
         list.add(new KeyStrokeProperty(quickTagShortcutRightProp, "Toggle right position:",
-                                       KeyStrokeManager.parseKeyStroke("alt+shift+right"),
+                                       KeyStrokeManager.parseKeyStroke("ctrl+right"),
                                        QuickTagToggleRightAction.getInstance())
-                         .setAllowBlank(true));
+                         .setAllowBlank(true)
+                         .setReservedKeyStrokes(AppConfig.RESERVED_KEYSTROKES)
+                         .setHelpText("Toggles a QuickTag panel in the right position."));
         list.add(new KeyStrokeProperty(quickTagShortcutLeftRightProp, "Toggle both positions:",
-                                       KeyStrokeManager.parseKeyStroke("alt+shift+up"),
+                                       KeyStrokeManager.parseKeyStroke("ctrl+up"),
                                        QuickTagToggleLeftRightAction.getInstance())
-                         .setAllowBlank(true));
+                         .setAllowBlank(true)
+                         .setReservedKeyStrokes(AppConfig.RESERVED_KEYSTROKES)
+                         .setHelpText("Toggles a QuickTag panel in both left and right positions."));
 
         // Add a few configurable hotkeys for commonly-used tags:
         for (int i = 1; i <= 8; i++) {
@@ -163,8 +169,8 @@ public class IceExtension extends ImageViewerExtension {
             list.add(new TagHotkeyProperty(tagHotkeyPropPrefix + i, "Tag hotkey " + i + ":")
                              .setKeyStroke(KeyStrokeManager.parseKeyStroke("Ctrl+F" + i))
                              .setAllowBlank(true)
-                             .setHelpText(helpText)
-                             .addFormFieldGenerationListener(new ReservedKeyStrokeWorkaround2()));
+                             .setReservedKeyStrokes(AppConfig.RESERVED_KEYSTROKES)
+                             .setHelpText(helpText));
         }
 
         return list;

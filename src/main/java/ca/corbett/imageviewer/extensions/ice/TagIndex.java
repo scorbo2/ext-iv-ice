@@ -31,7 +31,7 @@ public class TagIndex {
 
     private static final Logger log = Logger.getLogger(TagIndex.class.getName());
 
-    public static final String PROP_NAME = "ICE.General.enableTagIndex";
+    public static final String PROP_NAME = "ICE.ICE options.enableTagIndex";
 
     /**
      * Possible return codes for addOrUpdate() method.
