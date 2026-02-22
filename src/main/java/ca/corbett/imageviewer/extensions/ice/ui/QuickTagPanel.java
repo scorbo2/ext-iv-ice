@@ -342,9 +342,10 @@ public class QuickTagPanel extends JPanel {
         dialog.setVisible(true);
         String input = dialog.getResult();
         if (input != null) {
-            tagList.add(TagList.stripTag(input)); // don't show it as-typed, show the normalized version
+            String normalizedTag = TagList.stripTag(input); // don't show it as-typed, show the normalized version
+            tagList.add(normalizedTag);
             tagList.save(); // commit the changes immediately
-            return new TagAction(input);
+            return new TagAction(normalizedTag);
         }
         return null;
     }
