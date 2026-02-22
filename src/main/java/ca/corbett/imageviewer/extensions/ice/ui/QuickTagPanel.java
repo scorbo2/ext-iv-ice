@@ -1,6 +1,10 @@
 package ca.corbett.imageviewer.extensions.ice.ui;
 
-import ca.corbett.extras.LookAndFeelManager;
+import ca.corbett.extras.EnhancedAction;
+import ca.corbett.extras.actionpanel.ActionComponentType;
+import ca.corbett.extras.actionpanel.ActionPanel;
+import ca.corbett.extras.actionpanel.ColorOptions;
+import ca.corbett.extras.actionpanel.ColorTheme;
 import ca.corbett.extras.io.FileSystemUtil;
 import ca.corbett.extras.properties.AbstractProperty;
 import ca.corbett.extras.properties.ComboProperty;
@@ -14,7 +18,6 @@ import ca.corbett.imageviewer.extensions.ImageViewerExtensionManager;
 import ca.corbett.imageviewer.extensions.ice.IceExtension;
 import ca.corbett.imageviewer.extensions.ice.TagIndex;
 import ca.corbett.imageviewer.extensions.ice.TagList;
-import ca.corbett.imageviewer.extensions.ice.ui.dialogs.QuickTagGroupEditDialog;
 import ca.corbett.imageviewer.extensions.ice.ui.dialogs.QuickTagSourceDialog;
 import ca.corbett.imageviewer.ui.ImageInstance;
 import ca.corbett.imageviewer.ui.MainWindow;
@@ -22,20 +25,11 @@ import ca.corbett.imageviewer.ui.actions.ReloadUIAction;
 import org.apache.commons.io.FilenameUtils;
 
 import javax.swing.ImageIcon;
-import javax.swing.JButton;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.SwingConstants;
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
-import java.awt.event.ActionListener;
-import java.awt.image.BufferedImage;
+import java.awt.event.ActionEvent;
 import java.io.File;
 import java.util.HashMap;
 import java.util.List;
@@ -54,13 +48,17 @@ import java.util.logging.Logger;
  * tags within it, as well as renaming or deleting the group itself.
  * </p>
  * <p>
- * <b>Persistence:</b> Quick tag groups are persisted as JSON files in the
- * "quickTags" directory located in the application settings directory. Each source has its own
- * subdirectory within that directory, allowing users to maintain separate sets of quick tags
- * for different contexts (different types of images or projects, for example). Each panel's
- * visibility state, position, and contents are automatically restored when the application is restarted.
- * Hiding the quick tags panel in application settings does not remove any configured tag groups!
- * You can re-enable the panel at any time to regain access to your quick tags.
+ * <b>Persistence:</b> Quick tag groups are persisted in the "quickTags" directory
+ * located in the application settings directory. Subdirectories are created within that directory
+ * for each source, and the tag groups for each source are persisted within their respective subdirectories.
+ * This allows users to maintain separate sets of quick tags for different contexts
+ * (different types of images or projects, for example).
+ * </p>
+ * <p>
+ * The left panel and the right panel store their current visibility state, position, and
+ * contents separately, so they can be automatically restored when the application is restarted.
+ * Hiding the quick tags panel(s) in application settings does not remove any configured tag groups!
+ * You can re-enable the panel(s) at any time to regain access to your quick tags.
  * </p>
  * <p>
  * <b>What if the current image already has the selected tag?</b> The tag buttons on this panel
@@ -70,11 +68,6 @@ import java.util.logging.Logger;
  * Alternatively, you can press Ctrl+G (or whatever you have mapped that shortcut to) in order
  * to bring up the tag dialog and view/edit the tag list for the current image.
  * </p>
- * <p>
- * Minor TODO here: now that the application supports custom color schemes (as of 3.0), we should
- * either use the options set by the application, or add our own customization options for the
- * user to modify our colors. Currently, we always use colors from the current Look and Feel.
- * </p>
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
@@ -83,22 +76,17 @@ public class QuickTagPanel extends JPanel {
     private static final Logger log = Logger.getLogger(QuickTagPanel.class.getName());
 
     public static final String DEFAULT_SOURCE_NAME = "(default)";
+    public static final String OPTIONS_GROUP = "Quick tag options";
 
-    public static final int SideMargin = 16;
-    public static final int RowHeight = 25;
+    // Size for all icons in our ActionPanel:
+    private static final int iconSize = 18;
 
     private final ImageViewerExtension.ExtraPanelPosition position;
+    private final ActionPanel actionPanel;
     private final File sourceRootDir;
+    private final Map<String, TagList> tagListsByName; // group name -> tag list for that group
     private File sourceDir;
-    private int panelWidth;
-    private final BufferedImage iconAddTag;
-    private final BufferedImage iconEditTagGroup;
-    private final BufferedImage iconRemoveTagGroup;
-    private final BufferedImage iconExpand;
-    private final BufferedImage iconContract;
-
     private String currentSource;
-    private final Map<String, Boolean> isExpandedMap = new HashMap<>();
 
     /**
      * Creates a QuickTagPanel for the specified position.
@@ -120,18 +108,15 @@ public class QuickTagPanel extends JPanel {
             throw new IllegalArgumentException("QuickTagPanel is only supported in left or right position.");
         }
         this.position = position;
+        this.tagListsByName = new HashMap<>();
+        this.actionPanel = buildActionPanel();
 
-        setLayout(new GridBagLayout());
+        setLayout(new BorderLayout());
+        add(actionPanel, BorderLayout.CENTER);
         sourceRootDir = new File(Version.SETTINGS_DIR, "quickTags");
         if (!sourceRootDir.exists()) {
             sourceRootDir.mkdirs();
         }
-        final int iconSize = 18; // not configurable
-        iconAddTag = ImageViewerResources.getIconPlus(iconSize);
-        iconEditTagGroup = ImageViewerResources.getIconImageSetEdit(iconSize);
-        iconRemoveTagGroup = ImageViewerResources.getIconDelete(iconSize);
-        iconExpand = ImageViewerResources.getIconZoomIn(iconSize);
-        iconContract = ImageViewerResources.getIconZoomOut(iconSize);
 
         reset(); // Force a load of our contents
     }
@@ -158,329 +143,40 @@ public class QuickTagPanel extends JPanel {
                 .getInstance()
                 .getPropertiesManager()
                 .getProperty(IceExtension.quickTagPanelWidthProp);
-        panelWidth = prop == null ? 200 : prop.getValue();
-        removeAll();
-        List<File> tagFiles = FileSystemUtil.findFiles(sourceDir, false, "json");
-        int rowNumber = 1;
-        for (File tagFile : tagFiles) {
-            String groupName = tagFile.getName().replace(".json", "");
-            addLabel(groupName, rowNumber++);
-            if (Boolean.TRUE.equals(isExpandedMap.get(groupName))) {
+        int panelWidth = prop == null ? 200 : prop.getValue();
+        actionPanel.setPreferredSize(new Dimension(panelWidth, actionPanel.getPreferredSize().height));
+        tagListsByName.clear();
+        actionPanel.setAutoRebuildEnabled(false); // Otherwise each add will trigger an ActionPanel rebuild
+        try {
+            actionPanel.clear(true); // nuke everything; we'll rebuild from scratch
+            List<File> tagFiles = FileSystemUtil.findFiles(sourceDir, false, "tag");
+            for (File tagFile : tagFiles) {
+                String groupName = tagFile.getName().replace(".tag", ""); // TODO unsafe...
                 TagList list = TagList.fromFile(tagFile);
+                tagListsByName.put(groupName.toLowerCase(), list);
                 for (String tag : list.getTags()) {
-                    addButton(createTagButton(tag), rowNumber++);
+                    actionPanel.add(groupName, new TagAction(tag));
                 }
-                addGroupEditButtons(groupName, list, rowNumber++);
+                if (list.isEmpty()) {
+                    // Add a null action so the empty group gets created and displayed:
+                    actionPanel.add(groupName, (EnhancedAction)null);
+                }
             }
-        }
 
-        addNonExpandableLabel("Quick tag options", rowNumber++);
-        addNewGroupButton(rowNumber++);
-        addSourcesButton(rowNumber++);
-        addHidePanelButton(rowNumber++);
-        addBottomSpacer(rowNumber);
+            // Add the options group at the end, with actions for managing the quick tag groups and sources:
+            actionPanel.add(OPTIONS_GROUP, new AddGroupAction());
+            actionPanel.add(OPTIONS_GROUP, new ChangeSourceAction());
+            actionPanel.add(OPTIONS_GROUP, new HidePanelAction());
+        }
+        finally {
+            // Re-enabling auto-rebuild will trigger an immediate rebuild with our changes above:
+            actionPanel.setAutoRebuildEnabled(true);
+        }
 
         // Force a repaint to display the changes:
         this.invalidate();
         this.revalidate();
         this.repaint();
-    }
-
-    /**
-     * Applies the specified tag to the current image - this means adding it to the image's
-     * tag list if it is not already present, or removing it if it is. Remember that tags are
-     * case-insensitive, so "tag", "Tag", and "TAG" are all considered the same tag.
-     *
-     * @param tag The tag in question.
-     */
-    private void executeTagAction(String tag) {
-        ImageInstance image = MainWindow.getInstance().getSelectedImage();
-        if (! image.isEmpty()) {
-            File tagFile = new File(image.getImageFile().getParentFile(),
-                                    FilenameUtils.getBaseName(image.getImageFile().getName())+".ice");
-            TagList imageTags = TagList.fromFile(tagFile);
-            if (imageTags.hasTag(tag)) {
-                imageTags.remove(tag);
-            }
-            else {
-                imageTags.add(tag);
-            }
-            imageTags.save();
-            TagIndex.getInstance().addOrUpdateEntry(image.getImageFile(), tagFile);
-            ImageViewerExtensionManager.getInstance().imageSelected(image);
-        }
-    }
-
-    private void addNonExpandableLabel(String text, int row) {
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridwidth = 3;
-        gbc.gridy = row;
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.BOTH;
-        gbc.insets = new Insets(12,SideMargin,0,SideMargin);
-        JLabel label = new JLabel(" " + text);
-        label.setVerticalAlignment(SwingConstants.CENTER);
-        label.setPreferredSize(new Dimension(panelWidth,RowHeight));
-        label.setFont(label.getFont().deriveFont(Font.BOLD, 14f));
-        label.setOpaque(true);
-        label.setBackground(LookAndFeelManager.getLafColor("TextArea.selectionBackground", Color.BLUE));
-        label.setForeground(LookAndFeelManager.getLafColor("TextArea.selectionForeground", Color.WHITE));
-        add(label, gbc);
-    }
-
-    private void addLabel(String text, int row) {
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridwidth = 3;
-        gbc.gridy = row;
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.BOTH;
-        gbc.insets = new Insets(12,SideMargin,0,SideMargin);
-        final HeaderLabel headerLabel = new HeaderLabel(text, panelWidth);
-        headerLabel.addButtonListener(e -> {
-            isExpandedMap.put(text, !headerLabel.isExpanded());
-            reset();
-        });
-        isExpandedMap.putIfAbsent(text, true);
-        if (Boolean.FALSE.equals(isExpandedMap.get(text))) {
-            headerLabel.setExpanded(false);
-        }
-        add(headerLabel, gbc);
-    }
-
-    private void addButton(JButton button, int row) {
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridwidth = 3;
-        gbc.gridy = row;
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.BOTH;
-        gbc.insets = new Insets(0,SideMargin,0,SideMargin);
-        add(button, gbc);
-    }
-
-    private void addGroupEditButtons(String groupName, TagList list, int row) {
-        JButton button = createButton("");
-        button.setIcon(new ImageIcon(iconAddTag, "Add tag"));
-        button.setToolTipText("Add tag");
-        button.setPreferredSize(new Dimension(panelWidth/3, RowHeight));
-        button.addActionListener(e -> addNewTag(list));
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridwidth = 1;
-        gbc.gridy = row;
-        gbc.gridx = 0;
-        gbc.weightx = 0.333;
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.BOTH;
-        gbc.insets = new Insets(0, SideMargin, 12, 0);
-        add(button, gbc);
-
-        button = createButton("");
-        button.setIcon(new ImageIcon(iconEditTagGroup, "Edit tag group"));
-        button.setToolTipText("Edit this tag group");
-        button.setPreferredSize(new Dimension(panelWidth/3, RowHeight));
-        button.addActionListener(e -> editTagGroup(groupName, list));
-        gbc.gridx = 1;
-        gbc.insets = new Insets(0, 0, 12, 0);
-        add(button, gbc);
-
-        button = createButton("");
-        button.setIcon(new ImageIcon(iconRemoveTagGroup, "Remove tag group"));
-        button.setToolTipText("Remove this tag group");
-        button.setPreferredSize(new Dimension(panelWidth/3, RowHeight));
-        button.addActionListener(e -> removeTagGroup(list));
-        gbc.gridx = 2;
-        gbc.insets = new Insets(0, 0, 12, SideMargin);
-        add(button, gbc);
-    }
-
-    private void addNewGroupButton(int row) {
-        JButton button = createButton("New group...");
-        button.addActionListener(e -> addNewGroup());
-        addButton(button, row);
-    }
-
-    private void addSourcesButton(int row) {
-        JButton button = createButton("Quick tag source");
-        button.addActionListener(e -> selectSource());
-        addButton(button, row);
-    }
-
-    private void removeTagGroup(TagList list) {
-        if (JOptionPane.showConfirmDialog(MainWindow.getInstance(), "Really remove this tag group?") == JOptionPane.YES_OPTION) {
-            list.getPersistenceFile().delete();
-            reset();
-        }
-    }
-
-    private void addHidePanelButton(int row) {
-        JButton button = createButton("Hide quick tags");
-        button.addActionListener(e -> hidePanel());
-        addButton(button, row);
-    }
-
-    private void addBottomSpacer(int row) {
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridwidth = 2;
-        gbc.gridy = row;
-        gbc.anchor = GridBagConstraints.WEST;
-        gbc.fill = GridBagConstraints.BOTH;
-        gbc.insets = new Insets(SideMargin, 0,0,0);
-        gbc.weighty = 2;
-        JLabel label = new JLabel("");
-        add(label, gbc);
-    }
-
-    private JButton createTagButton(String label) {
-        JButton button = createButton(label);
-        button.addActionListener(e -> executeTagAction(label));
-        return button;
-    }
-
-    private JButton createButton(String label) {
-        JButton button = new JButton(label);
-        button.setPreferredSize(new Dimension(panelWidth, RowHeight));
-        return button;
-    }
-
-    private void editTagGroup(String groupName, TagList list) {
-        QuickTagGroupEditDialog dialog = new QuickTagGroupEditDialog("Edit quick tag group", groupName, list);
-        dialog.setVisible(true);
-        if (dialog.wasOkayed()) {
-            list.clear();
-            list.addAll(dialog.getModifiedTagList());
-
-            // The user may have renamed this tag list, in which case we have to update the save location:
-            if (dialog.groupWasRenamed()) {
-                File originalFile = list.getPersistenceFile();
-                File target = new File(list.getPersistenceFile().getParentFile(), dialog.getModifiedGroupName() + ".json");
-                list.setPersistenceFile(target);
-
-                // Also remove the old one:
-                originalFile.delete();
-            }
-
-            list.save();
-            reset();
-        }
-    }
-
-    /**
-     * Hides all QuickTagPanels and silently updates application preferences to keep them hidden.
-     * Nothing is deleted or lost as a result of this operation! The panels can be re-enabled
-     * at any time in application settings.
-     */
-    private void hidePanel() {
-        // Get the property that controls quick tag panel position:
-        AbstractProperty prop = AppConfig
-                .getInstance()
-                .getPropertiesManager()
-                .getProperty(IceExtension.quickTagPanelPositionProp);
-
-        if (prop instanceof ComboProperty<?> comboProp) {
-            comboProp.setSelectedIndex(0); // "None" position
-            AppConfig.getInstance().save(); // force silent save to persist this immediately
-
-            // It may seem like overkill to reload the entire UI just to hide these panels,
-            // but the main image view needs to be laid out again as a result of this change.
-            ReloadUIAction.getInstance().actionPerformed(null);
-
-            // Explain to the user what just happened and how to reverse it later:
-            MainWindow.getInstance().showMessageDialog("Quick tags hidden",
-                                                       "You can re-enable the quick tag panel(s) in application settings.");
-        }
-    }
-
-    private void addNewGroup() {
-        String name = JOptionPane.showInputDialog(MainWindow.getInstance(), "Enter new group name:");
-        if (name != null) {
-            File tagFile = new File(sourceDir, name + ".json");
-            if (tagFile.exists()) {
-                MainWindow.getInstance().showMessageDialog("Name in use", "There is already a group with that name.");
-                return;
-            }
-            TagList newList = TagList.fromFile(tagFile);
-            newList.save(); // create the empty file
-            reset(); // reload everything
-        }
-    }
-
-    private void selectSource() {
-        QuickTagSourceDialog dialog = new QuickTagSourceDialog("Quick tag source", currentSource);
-        dialog.setVisible(true);
-        if (dialog.wasOkayed()) {
-            if (dialog.wasSourceChanged()) {
-                log.info("Switching to quick tag source: "+dialog.getSelectedSourceName());
-                currentSource = dialog.getSelectedSourceName();
-                setSourceInProperties(currentSource);
-                isExpandedMap.clear();
-                reset();
-            }
-        }
-    }
-
-    private void addNewTag(TagList list) {
-        String input = JOptionPane.showInputDialog(MainWindow.getInstance(), "Enter new tag:");
-        if (input != null) {
-            list.add(input);
-            list.save();
-            reset();
-        }
-    }
-
-    /**
-     * Represents a header label with a collapse/expand button.
-     * When collapsed, only the header label and the expand button are shown.
-     * This is great for having a potentially large number of tag groups without requiring
-     * a lot of vertical scrolling to see them all.
-     */
-    private class HeaderLabel extends JPanel {
-        private final String labelText;
-        private final JButton btnExpander;
-        private boolean isExpanded;
-
-        public HeaderLabel(String labelText, int panelWidth) {
-            super(new BorderLayout());
-            this.labelText = labelText;
-            JLabel label = new JLabel(" " + labelText);
-            label.setVerticalAlignment(SwingConstants.CENTER);
-            label.setPreferredSize(new Dimension(panelWidth,RowHeight));
-            label.setFont(label.getFont().deriveFont(Font.BOLD, 14f));
-            label.setOpaque(true);
-            label.setBackground(LookAndFeelManager.getLafColor("TextArea.selectionBackground", Color.BLUE));
-            label.setForeground(LookAndFeelManager.getLafColor("TextArea.selectionForeground", Color.WHITE));
-            add(label, BorderLayout.CENTER);
-
-            btnExpander = new JButton(new ImageIcon(iconContract));
-            btnExpander.setPreferredSize(new Dimension(RowHeight, RowHeight));
-            btnExpander.setBorder(null);
-            btnExpander.setBackground(LookAndFeelManager.getLafColor("TextArea.selectionBackground", Color.BLUE));
-            isExpanded = true;
-            add(btnExpander, BorderLayout.EAST);
-        }
-
-        public boolean isExpanded() {
-            return isExpanded;
-        }
-
-        public void setExpanded(boolean isExpanded) {
-            if (this.isExpanded == isExpanded) {
-                return; // ignore no-op
-            }
-            this.isExpanded = isExpanded;
-            if (isExpanded) {
-                btnExpander.setIcon(new ImageIcon(iconContract));
-            }
-            else {
-                btnExpander.setIcon(new ImageIcon(iconExpand));
-            }
-        }
-
-        public String getLabelText() {
-            return labelText;
-        }
-
-        public void addButtonListener(ActionListener listener) {
-            btnExpander.addActionListener(listener);
-        }
     }
 
     /**
@@ -518,5 +214,204 @@ public class QuickTagPanel extends JPanel {
             return DEFAULT_SOURCE_NAME;
         }
         return shortTextProp.getValue();
+    }
+
+    /**
+     * Invoked internally to build and return an ActionPanel with all
+     * the options and configuration set the way we want for our quick tag panels.
+     */
+    private ActionPanel buildActionPanel() {
+        ActionPanel actionPanel = new ActionPanel();
+        actionPanel.setHeaderIconSize(iconSize);
+        actionPanel.getToolBarOptions().setIconSize(iconSize);
+        actionPanel.setActionComponentType(ActionComponentType.BUTTONS);
+
+        // TODO this is not having the expected effect, and I don't know why.
+        //      It works flawlessly in the swing-extras demo app,
+        //      but here, there's a 2-pixel margin around every action button, leading
+        //      to a 4-pixel gap between buttons (2 pixels on the bottom of one action, 2 pixels above the next).
+        //      Cause unknown. I've tried different Look and Feels, tried custom schemes,
+        //      tried explicitly setting the button margins to 0, nothing works.
+        //      Weirdly, if I set the action tray margins to 1, the 2-pixel margin around
+        //      each button turns into a 3-pixel margin, so it seems like the margins
+        //      I specify here are being added to some margins being supplied somewhere
+        //      else, but I don't know where. I also have no idea how it works flawlessly
+        //      in the swing-extras demo app and not here. That implies that there's some
+        //      option I'm specifying here that's wrong, or some option that I'm NOT specifying
+        //      here that I should be, but I can't figure out what it is.
+        //      Investigate and fix! I don't want any margin around the action buttons!
+        actionPanel.getActionTrayMargins().setAll(0); // no gaps between anything, no margins either
+        actionPanel.getToolBarMargins().setAll(0); // This should be redundant in Stretch mode.
+        
+        actionPanel.getExpandCollapseOptions().setAllowHeaderDoubleClick(true); // convenient!
+        actionPanel.setToolBarEnabled(true);
+        actionPanel.getToolBarOptions().addExcludedGroup(OPTIONS_GROUP); // Don't add toolbar for our options group
+        actionPanel.getToolBarOptions().setEditIcon(
+                new ImageIcon(ImageViewerResources.getIconImageSetEdit(ImageViewerResources.NATIVE_ICON_SIZE)));
+
+        // We have to register our "add item" action to ActionPanel, so it will show up
+        // in the toolbar.
+        actionPanel.getToolBarOptions().setAllowItemAdd(true);
+        actionPanel.getToolBarOptions().setNewActionSupplier((a, g) -> addTag(g));
+
+        // Set custom color theme if user has picked one in AppConfig:
+        // (otherwise, we'll let the Look and Feel decide all the colors)
+        ColorTheme colorTheme = AppConfig.getInstance().getActionPanelTheme();
+        if (colorTheme != null) {
+            actionPanel.getColorOptions().setFromTheme(colorTheme);
+
+            // Tweak it just a little - I want the action tray background to be the same as
+            // the panel background. Otherwise, it looks odd with our action buttons:
+            ColorOptions options = actionPanel.getColorOptions();
+            options.setActionBackground(AppConfig.getInstance().getDefaultBackground());
+            options.setToolBarButtonBackground(options.getActionButtonBackground());
+        }
+        else {
+            actionPanel.getColorOptions().useSystemDefaults();
+        }
+
+        return actionPanel;
+    }
+
+    /**
+     * Prompts for a new tag name, adds it to the specified group, and returns
+     * a new TagAction for that tag so it can be added to the ActionPanel.
+     */
+    private EnhancedAction addTag(String groupName) {
+        TagList tagList = tagListsByName.get(groupName.toLowerCase());
+        if (tagList == null) {
+            log.warning("Unable to find tag list for group: " + groupName + ", cannot add new tag.");
+            return null;
+        }
+        String input = JOptionPane.showInputDialog(MainWindow.getInstance(), "Enter new tag:");
+        if (input != null) {
+            tagList.add(input); // TODO we're adding it exactly as the user entered it, but TagList normalizes it...
+            tagList.save();
+            //reset(); // ActionPanel handles adding it for us, so I don't think we need this... TODO confirm
+            return new TagAction(input);
+        }
+        return null;
+    }
+
+    /**
+     * A simple Action that applies a given tag to the current image when triggered.
+     * This acts as a toggle - if the given tag is already present in the selected
+     * image, it is removed. Otherwise, it is added. The tag index is updated
+     * immediately, and the tag preview pane is refreshed to reflect the change.
+     */
+    private static class TagAction extends EnhancedAction {
+        private final String tag;
+
+        public TagAction(String tag) {
+            super(tag);
+            this.tag = tag;
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            ImageInstance image = MainWindow.getInstance().getSelectedImage();
+            if (!image.isEmpty()) {
+                File tagFile = new File(image.getImageFile().getParentFile(),
+                                        FilenameUtils.getBaseName(image.getImageFile().getName()) + ".ice");
+                TagList imageTags = TagList.fromFile(tagFile);
+                if (imageTags.hasTag(tag)) {
+                    imageTags.remove(tag);
+                }
+                else {
+                    imageTags.add(tag);
+                }
+                imageTags.save();
+                TagIndex.getInstance().addOrUpdateEntry(image.getImageFile(), tagFile);
+                ImageViewerExtensionManager.getInstance().imageSelected(image);
+            }
+        }
+    }
+
+    /**
+     * An Action for adding a new, empty ActionGroup to the current quick tag source.
+     */
+    private class AddGroupAction extends EnhancedAction {
+
+        public AddGroupAction() {
+            super("New group...");
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            String name = JOptionPane.showInputDialog(MainWindow.getInstance(), "Enter new group name:");
+            if (name != null) {
+                File tagFile = new File(sourceDir, name + ".tag");
+                if (tagFile.exists()) {
+                    MainWindow.getInstance()
+                              .showMessageDialog("Name in use", "There is already a group with that name.");
+                    return;
+                }
+                TagList newList = TagList.fromFile(tagFile);
+                newList.save(); // create the empty file
+                reset(); // reload everything
+            }
+        }
+    }
+
+    /**
+     * An Action for selecting a different quick tag source. This launches the QuickTagSourceDialog,
+     * and if the user selects a different source and confirms, the panel is reset to show
+     * the contents of the newly selected source. The selected source is also persisted in application settings
+     * so that it is restored on next launch.
+     */
+    private class ChangeSourceAction extends EnhancedAction {
+
+        public ChangeSourceAction() {
+            super("Quick tag source");
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            QuickTagSourceDialog dialog = new QuickTagSourceDialog("Quick tag source", currentSource);
+            dialog.setVisible(true);
+            if (dialog.wasOkayed()) {
+                if (dialog.wasSourceChanged()) {
+                    log.info("Switching to quick tag source: " + dialog.getSelectedSourceName());
+                    currentSource = dialog.getSelectedSourceName();
+                    setSourceInProperties(currentSource);
+                    reset();
+                }
+            }
+        }
+    }
+
+    /**
+     * An Action to hide the quick tag panel(s) and update application settings accordingly.
+     * The main UI is refreshed so that the change is immediately visible. Users must visit
+     * the application properties dialog and manually re-enable the quick tag panel(s) if
+     * they want to get them back, but no data is lost as a result of this operation.
+     */
+    private static class HidePanelAction extends EnhancedAction {
+
+        public HidePanelAction() {
+            super("Hide quick tags");
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            // Get the property that controls quick tag panel position:
+            AbstractProperty prop = AppConfig
+                    .getInstance()
+                    .getPropertiesManager()
+                    .getProperty(IceExtension.quickTagPanelPositionProp);
+
+            if (prop instanceof ComboProperty<?> comboProp) {
+                comboProp.setSelectedIndex(0); // "None" position
+                AppConfig.getInstance().save(); // force silent save to persist this immediately
+
+                // It may seem like overkill to reload the entire UI just to hide these panels,
+                // but the main image view needs to be laid out again as a result of this change.
+                ReloadUIAction.getInstance().actionPerformed(null);
+
+                // Explain to the user what just happened and how to reverse it later:
+                MainWindow.getInstance().showMessageDialog("Quick tags hidden",
+                                                           "You can re-enable the quick tag panel(s) in application settings.");
+            }
+        }
     }
 }
