@@ -5,6 +5,7 @@ Version 3.0.0 [TODO - release date]
   #61 - Respond to ActionPanel events for quick tag edits
   #59 - Now using ActionPanel for quick tags panel
   #57 - ImageViewer has upgraded to swing-extras 2.8
+  #55 - RandomImageSetDialog: fix missing progress bar
   #54 - Search: add sort options
   #51 - Add keyboard shortcuts for quick tag panels
   #43 - Ensure TagPreviewPanel shows correct shortcut
