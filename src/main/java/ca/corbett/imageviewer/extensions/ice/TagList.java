@@ -15,7 +15,7 @@ import java.util.logging.Logger;
 
 public class TagList {
     private static final Logger log = Logger.getLogger(TagList.class.getName());
-    private static final Set<Character> DISALLOWED_TAG_CHARS = Set.of('{', '}', '|', ',');
+    public static final Set<Character> DISALLOWED_TAG_CHARS = Set.of('{', '}', '|', ',');
 
     public static final String TAG_FORMAT_ERROR = "Tags cannot contain the characters: { } |";
 
