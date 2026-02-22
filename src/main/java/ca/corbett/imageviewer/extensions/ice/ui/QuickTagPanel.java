@@ -225,23 +225,9 @@ public class QuickTagPanel extends JPanel {
         actionPanel.setHeaderIconSize(iconSize);
         actionPanel.getToolBarOptions().setIconSize(iconSize);
         actionPanel.setActionComponentType(ActionComponentType.BUTTONS);
-
-        // TODO this is not having the expected effect, and I don't know why.
-        //      It works flawlessly in the swing-extras demo app,
-        //      but here, there's a 2-pixel margin around every action button, leading
-        //      to a 4-pixel gap between buttons (2 pixels on the bottom of one action, 2 pixels above the next).
-        //      Cause unknown. I've tried different Look and Feels, tried custom schemes,
-        //      tried explicitly setting the button margins to 0, nothing works.
-        //      Weirdly, if I set the action tray margins to 1, the 2-pixel margin around
-        //      each button turns into a 3-pixel margin, so it seems like the margins
-        //      I specify here are being added to some margins being supplied somewhere
-        //      else, but I don't know where. I also have no idea how it works flawlessly
-        //      in the swing-extras demo app and not here. That implies that there's some
-        //      option I'm specifying here that's wrong, or some option that I'm NOT specifying
-        //      here that I should be, but I can't figure out what it is.
-        //      Investigate and fix! I don't want any margin around the action buttons!
         actionPanel.getActionTrayMargins().setAll(0); // no gaps between anything, no margins either
         actionPanel.getToolBarMargins().setAll(0); // This should be redundant in Stretch mode.
+        actionPanel.setButtonPadding(4); // Give the buttons just a bit more padding than the default 2 pixels.
         
         actionPanel.getExpandCollapseOptions().setAllowHeaderDoubleClick(true); // convenient!
         actionPanel.setToolBarEnabled(true);
