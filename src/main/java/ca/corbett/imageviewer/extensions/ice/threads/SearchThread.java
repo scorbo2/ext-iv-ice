@@ -88,7 +88,7 @@ public class SearchThread extends MultiProgressWorker {
     public List<File> getSearchResults(SortMode sortMode) {
         // If the search found nothing, sorting is irrelevant:
         if (searchResults.isEmpty()) {
-            return searchResults;
+            return new ArrayList<>(searchResults);
         }
 
         // Otherwise, apply sort mode:
