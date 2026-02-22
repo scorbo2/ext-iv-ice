@@ -10,6 +10,7 @@ import org.apache.commons.io.FilenameUtils;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -23,6 +24,32 @@ import java.util.logging.Logger;
 public class SearchThread extends MultiProgressWorker {
 
     private static final Logger log = Logger.getLogger(SearchThread.class.getName());
+
+    /**
+     * Describes options for determining the sort order of the result set.
+     */
+    public enum SortMode {
+        FOUND_ORDER_ASCENDING("Found order, ascending"),
+        FOUND_ORDER_DESCENDING("Found order, descending"),
+        FILENAME_ASCENDING("By filename, ascending"),
+        FILENAME_DESCENDING("By filename, descending"),
+        PATH_ASCENDING("By file path/name, ascending"),
+        PATH_DESCENDING("By file path/name, descending"),
+        DATE_ASCENDING("By file date, ascending"),
+        DATE_DESCENDING("By file date, descending"),
+        RANDOM("Random order");
+
+        private final String label;
+
+        SortMode(String label) {
+            this.label = label;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
 
     private final File initialDir;
     private final boolean isRecursive;
@@ -55,8 +82,48 @@ public class SearchThread extends MultiProgressWorker {
         wasCanceled = false;
     }
 
-    public List<File> getSearchResults() {
-        return new ArrayList<>(searchResults);
+    /**
+     * Returns the result set of this search, using the given SortMode to order them.
+     */
+    public List<File> getSearchResults(SortMode sortMode) {
+        // If the search found nothing, sorting is irrelevant:
+        if (searchResults.isEmpty()) {
+            return new ArrayList<>(searchResults);
+        }
+
+        // Otherwise, apply sort mode:
+        List<File> sortedResults = new ArrayList<>(searchResults);
+        switch (sortMode) {
+            case FOUND_ORDER_ASCENDING:
+                // No sorting needed, already in found order
+                break;
+            case FOUND_ORDER_DESCENDING:
+                Collections.reverse(sortedResults);
+                break;
+            case FILENAME_ASCENDING:
+                sortedResults.sort((f1, f2) -> f1.getName().compareToIgnoreCase(f2.getName()));
+                break;
+            case FILENAME_DESCENDING:
+                sortedResults.sort((f1, f2) -> f2.getName().compareToIgnoreCase(f1.getName()));
+                break;
+            case PATH_ASCENDING:
+                sortedResults.sort((f1, f2) -> f1.getAbsolutePath().compareToIgnoreCase(f2.getAbsolutePath()));
+                break;
+            case PATH_DESCENDING:
+                sortedResults.sort((f1, f2) -> f2.getAbsolutePath().compareToIgnoreCase(f1.getAbsolutePath()));
+                break;
+            case DATE_ASCENDING:
+                sortedResults.sort((f1, f2) -> Long.compare(f1.lastModified(), f2.lastModified()));
+                break;
+            case DATE_DESCENDING:
+                sortedResults.sort((f1, f2) -> Long.compare(f2.lastModified(), f1.lastModified()));
+                break;
+            case RANDOM:
+                Collections.shuffle(sortedResults);
+                break;
+        }
+
+        return sortedResults;
     }
 
     public boolean wasCanceled() {
