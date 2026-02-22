@@ -151,7 +151,7 @@ public class QuickTagPanel extends JPanel {
             actionPanel.clear(true); // nuke everything; we'll rebuild from scratch
             List<File> tagFiles = FileSystemUtil.findFiles(sourceDir, false, "tag");
             for (File tagFile : tagFiles) {
-                String groupName = tagFile.getName().replace(".tag", "");
+                String groupName = tagFile.getName().replace(".tag", ""); // TODO unsafe...
                 TagList list = TagList.fromFile(tagFile);
                 tagListsByName.put(groupName.toLowerCase(), list);
                 for (String tag : list.getTags()) {
@@ -225,8 +225,24 @@ public class QuickTagPanel extends JPanel {
         actionPanel.setHeaderIconSize(iconSize);
         actionPanel.getToolBarOptions().setIconSize(iconSize);
         actionPanel.setActionComponentType(ActionComponentType.BUTTONS);
+
+        // TODO this is not having the expected effect, and I don't know why.
+        //      It works flawlessly in the swing-extras demo app,
+        //      but here, there's a 2-pixel margin around every action button, leading
+        //      to a 4-pixel gap between buttons (2 pixels on the bottom of one action, 2 pixels above the next).
+        //      Cause unknown. I've tried different Look and Feels, tried custom schemes,
+        //      tried explicitly setting the button margins to 0, nothing works.
+        //      Weirdly, if I set the action tray margins to 1, the 2-pixel margin around
+        //      each button turns into a 3-pixel margin, so it seems like the margins
+        //      I specify here are being added to some margins being supplied somewhere
+        //      else, but I don't know where. I also have no idea how it works flawlessly
+        //      in the swing-extras demo app and not here. That implies that there's some
+        //      option I'm specifying here that's wrong, or some option that I'm NOT specifying
+        //      here that I should be, but I can't figure out what it is.
+        //      Investigate and fix! I don't want any margin around the action buttons!
         actionPanel.getActionTrayMargins().setAll(0); // no gaps between anything, no margins either
-        actionPanel.getToolBarMargins().setAll(0);
+        actionPanel.getToolBarMargins().setAll(0); // This should be redundant in Stretch mode.
+        
         actionPanel.getExpandCollapseOptions().setAllowHeaderDoubleClick(true); // convenient!
         actionPanel.setToolBarEnabled(true);
         actionPanel.getToolBarOptions().addExcludedGroup(OPTIONS_GROUP); // Don't add toolbar for our options group
@@ -269,9 +285,9 @@ public class QuickTagPanel extends JPanel {
         }
         String input = JOptionPane.showInputDialog(MainWindow.getInstance(), "Enter new tag:");
         if (input != null) {
-            tagList.add(input);
+            tagList.add(input); // TODO we're adding it exactly as the user entered it, but TagList normalizes it...
             tagList.save();
-            //reset();
+            //reset(); // ActionPanel handles adding it for us, so I don't think we need this... TODO confirm
             return new TagAction(input);
         }
         return null;
@@ -280,7 +296,7 @@ public class QuickTagPanel extends JPanel {
     /**
      * A simple Action that applies a given tag to the current image when triggered.
      * This acts as a toggle - if the given tag is already present in the selected
-     * image, it is removed. Otherwise, it is added. The tag index is update
+     * image, it is removed. Otherwise, it is added. The tag index is updated
      * immediately, and the tag preview pane is refreshed to reflect the change.
      */
     private static class TagAction extends EnhancedAction {
