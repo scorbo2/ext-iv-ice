@@ -1,6 +1,7 @@
 package ca.corbett.imageviewer.extensions.ice.ui;
 
 import ca.corbett.extras.EnhancedAction;
+import ca.corbett.extras.TextInputDialog;
 import ca.corbett.extras.actionpanel.ActionComponentType;
 import ca.corbett.extras.actionpanel.ActionPanel;
 import ca.corbett.extras.actionpanel.ColorOptions;
@@ -19,6 +20,7 @@ import ca.corbett.imageviewer.extensions.ice.IceExtension;
 import ca.corbett.imageviewer.extensions.ice.TagIndex;
 import ca.corbett.imageviewer.extensions.ice.TagList;
 import ca.corbett.imageviewer.extensions.ice.ui.dialogs.QuickTagSourceDialog;
+import ca.corbett.imageviewer.extensions.ice.ui.formfield.TagNameValidator;
 import ca.corbett.imageviewer.ui.ImageInstance;
 import ca.corbett.imageviewer.ui.MainWindow;
 import ca.corbett.imageviewer.ui.actions.ReloadUIAction;
@@ -31,6 +33,9 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -228,6 +233,9 @@ public class QuickTagPanel extends JPanel {
         actionPanel.getActionTrayMargins().setAll(0); // no gaps between anything, no margins either
         actionPanel.getToolBarMargins().setAll(0); // This should be redundant in Stretch mode.
         actionPanel.setButtonPadding(4); // Give the buttons just a bit more padding than the default 2 pixels.
+        actionPanel.addGroupRenamedListener((a, o, n) -> groupRenamed(o, n));
+        actionPanel.addGroupRemovedListener((a, g) -> groupRemoved(g));
+        actionPanel.addGroupReorderedListener((a, g) -> groupReordered(g));
         
         actionPanel.getExpandCollapseOptions().setAllowHeaderDoubleClick(true); // convenient!
         actionPanel.setToolBarEnabled(true);
@@ -260,6 +268,65 @@ public class QuickTagPanel extends JPanel {
     }
 
     /**
+     * When a group is renamed, we need to also ensure the persistence file is renamed accordingly,
+     * and that our internal map is updated.
+     */
+    private void groupRenamed(String oldName, String newName) {
+        TagList list = tagListsByName.remove(oldName.toLowerCase());
+        if (list != null) {
+            tagListsByName.put(newName.toLowerCase(), list);
+            try {
+                File oldFile = list.getPersistenceFile();
+                File newFile = new File(oldFile.getParentFile(), newName + ".tag");
+                Files.move(oldFile.toPath(), newFile.toPath());
+                list.setPersistenceFile(newFile);
+                list.save(); // this might seem redundant, but user can rename + reorder in one step, so let's be sure.
+            }
+            catch (IOException ioe) {
+                log.log(Level.SEVERE, "Problem renaming tag group file: " + ioe.getMessage(), ioe);
+                MainWindow.getInstance().showMessageDialog("Error",
+                                                           "There was a problem renaming the tag group file. See log for details.");
+            }
+        }
+    }
+
+    /**
+     * When a group is removed, we need to delete the corresponding persistence file
+     * and remove the entry from our internal map.
+     */
+    private void groupRemoved(String groupName) {
+        TagList list = tagListsByName.remove(groupName.toLowerCase());
+        if (list != null) {
+            File file = list.getPersistenceFile();
+            if (file.exists()) {
+                if (!file.delete()) {
+                    log.warning("Unable to delete tag group file: " + file.getAbsolutePath());
+                }
+            }
+        }
+    }
+
+    /**
+     * When the items within a group are reordered, we need to update the order in the corresponding TagList
+     * and persist the changes. The ActionPanel doesn't know anything about our TagList objects,
+     * so we have to manually sync the order from the ActionPanel back to our TagList whenever this happens.
+     */
+    private void groupReordered(String groupName) {
+        TagList list = tagListsByName.get(groupName.toLowerCase());
+        List<String> newTags = new ArrayList<>();
+        if (list != null) {
+            for (EnhancedAction action : actionPanel.getActionsForGroup(groupName)) {
+                if (action instanceof TagAction tagAction) {
+                    newTags.add(tagAction.tag);
+                }
+            }
+            list.clear();
+            list.addAll(newTags);
+            list.save();
+        }
+    }
+
+    /**
      * Prompts for a new tag name, adds it to the specified group, and returns
      * a new TagAction for that tag so it can be added to the ActionPanel.
      */
@@ -269,11 +336,14 @@ public class QuickTagPanel extends JPanel {
             log.warning("Unable to find tag list for group: " + groupName + ", cannot add new tag.");
             return null;
         }
-        String input = JOptionPane.showInputDialog(MainWindow.getInstance(), "Enter new tag:");
+        TextInputDialog dialog = new TextInputDialog(MainWindow.getInstance(), "New tag");
+        dialog.addValidator(new TagNameValidator(tagList));
+        dialog.setPrompt("Enter new tag:");
+        dialog.setVisible(true);
+        String input = dialog.getResult();
         if (input != null) {
-            tagList.add(input); // TODO we're adding it exactly as the user entered it, but TagList normalizes it...
-            tagList.save();
-            //reset(); // ActionPanel handles adding it for us, so I don't think we need this... TODO confirm
+            tagList.add(TagList.stripTag(input)); // don't show it as-typed, show the normalized version
+            tagList.save(); // commit the changes immediately
             return new TagAction(input);
         }
         return null;
