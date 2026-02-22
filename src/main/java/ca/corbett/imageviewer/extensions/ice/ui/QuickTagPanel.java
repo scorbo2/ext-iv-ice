@@ -283,9 +283,14 @@ public class QuickTagPanel extends JPanel {
                 list.save(); // this might seem redundant, but user can rename + reorder in one step, so let's be sure.
             }
             catch (IOException ioe) {
+                // Log and display the error:
                 log.log(Level.SEVERE, "Problem renaming tag group file: " + ioe.getMessage(), ioe);
                 MainWindow.getInstance().showMessageDialog("Error",
                                                            "There was a problem renaming the tag group file. See log for details.");
+
+                // Now revert our map change:
+                tagListsByName.remove(newName.toLowerCase());
+                tagListsByName.put(oldName.toLowerCase(), list);
             }
         }
     }
