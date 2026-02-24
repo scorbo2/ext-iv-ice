@@ -18,12 +18,14 @@ import ca.corbett.imageviewer.ui.MainWindow;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
 /**
  * Represents a read-only panel for displaying tags for the current image.
+ * Clicking on the text field will open the tag dialog for the current image.
+ * The help label for the text field will show the currently-configured keyboard shortcut
+ * for the tag dialog, if there is one.
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
@@ -32,23 +34,14 @@ public class TagPreviewPanel extends JPanel {
 
     public TagPreviewPanel() {
         setLayout(new BorderLayout());
-        FormPanel formPanel = new FormPanel(Alignment.TOP_LEFT);
-        formPanel.setBorderMargin(6);
+        FormPanel formPanel = new FormPanel(Alignment.CENTER);
+        formPanel.setBorderMargin(4);
+        formPanel.setBackground(AppConfig.getInstance().getDefaultBackground());
         textField = LongTextField.ofDynamicSizingMultiLine("", 1);
         textField.setMargins(new Margins(10, 4, 10, 4, 0));
         textField.setEnabled(false);
-        this.setBackground(Color.GREEN);
-        textField.getTextArea().setColumns(10); // dumb! remove once swing-extras #119 fix is available in 2.5 release
         textField.setHelpText(getHelpText());
-        textField.getTextArea().addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                ImageInstance currentImage = MainWindow.getInstance().getSelectedImage();
-                if (! currentImage.isEmpty()) {
-                    TagSingleImageAction.getInstance().actionPerformed(null);
-                }
-            }
-        });
+        textField.getTextArea().addMouseListener(new TagFieldMouseListener());
         formPanel.add(textField);
         add(formPanel, BorderLayout.CENTER);
     }
@@ -94,5 +87,20 @@ public class TagPreviewPanel extends JPanel {
 
     public void setTagList(TagList tagList) {
         textField.setText(tagList.toString());
+    }
+
+    /**
+     * A very simple mouse listener to execute our TagSingleImageAction when the user clicks on the tag preview.
+     * This is just a convenient shortcut to open the tag dialog for the current image, since the tag preview is
+     * read-only and doesn't have any other interactivity.
+     */
+    private static class TagFieldMouseListener extends MouseAdapter {
+        @Override
+        public void mouseClicked(MouseEvent e) {
+            ImageInstance currentImage = MainWindow.getInstance().getSelectedImage();
+            if (!currentImage.isEmpty()) {
+                TagSingleImageAction.getInstance().actionPerformed(null);
+            }
+        }
     }
 }
