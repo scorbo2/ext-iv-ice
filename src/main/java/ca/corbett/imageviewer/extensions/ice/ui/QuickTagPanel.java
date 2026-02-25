@@ -1,6 +1,7 @@
 package ca.corbett.imageviewer.extensions.ice.ui;
 
 import ca.corbett.extras.EnhancedAction;
+import ca.corbett.extras.ScrollUtil;
 import ca.corbett.extras.TextInputDialog;
 import ca.corbett.extras.actionpanel.ActionComponentType;
 import ca.corbett.extras.actionpanel.ActionPanel;
@@ -29,6 +30,7 @@ import org.apache.commons.io.FilenameUtils;
 import javax.swing.ImageIcon;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
@@ -117,7 +119,9 @@ public class QuickTagPanel extends JPanel {
         this.actionPanel = buildActionPanel();
 
         setLayout(new BorderLayout());
-        add(actionPanel, BorderLayout.CENTER);
+        JScrollPane scrollPane = ScrollUtil.buildScrollPane(actionPanel, 10);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        add(scrollPane, BorderLayout.CENTER);
         sourceRootDir = new File(Version.SETTINGS_DIR, "quickTags");
         if (!sourceRootDir.exists()) {
             sourceRootDir.mkdirs();
@@ -144,12 +148,6 @@ public class QuickTagPanel extends JPanel {
         if (!sourceDir.exists()) {
             sourceDir.mkdirs();
         }
-        IntegerProperty prop = (IntegerProperty)AppConfig
-                .getInstance()
-                .getPropertiesManager()
-                .getProperty(IceExtension.quickTagPanelWidthProp);
-        int panelWidth = prop == null ? 200 : prop.getValue();
-        actionPanel.setPreferredSize(new Dimension(panelWidth, actionPanel.getPreferredSize().height));
         tagListsByName.clear();
         actionPanel.setAutoRebuildEnabled(false); // Otherwise each add will trigger an ActionPanel rebuild
         try {
@@ -226,12 +224,31 @@ public class QuickTagPanel extends JPanel {
      * the options and configuration set the way we want for our quick tag panels.
      */
     private ActionPanel buildActionPanel() {
-        ActionPanel actionPanel = new ActionPanel();
+        // This is very weird, but calling setPreferredSize() on the ActionPanel itself
+        // prevents the scrollbar from ever showing up, even when the parent container is too
+        // small to show all contents. The only way I've found to make this work is
+        // to override ActionPanel itself and return the preferred size from there.
+        // All of this, by the way, is just so we can set our preferred width. Sigh.
+        ActionPanel actionPanel = new ActionPanel() {
+            @Override
+            public Dimension getPreferredSize() {
+                IntegerProperty prop = (IntegerProperty)AppConfig
+                        .getInstance()
+                        .getPropertiesManager()
+                        .getProperty(IceExtension.quickTagPanelWidthProp);
+                int panelWidth = prop == null ? 200 : prop.getValue();
+                Dimension superPref = super.getPreferredSize();
+                return new Dimension(panelWidth, superPref.height);
+            }
+        };
+
+        // Now we can customize ActionPanel to get it to look the way we want it to.
         actionPanel.setHeaderIconSize(iconSize);
         actionPanel.getToolBarOptions().setIconSize(iconSize);
         actionPanel.setActionComponentType(ActionComponentType.BUTTONS);
         actionPanel.getActionTrayMargins().setAll(0); // no gaps between anything, no margins either
         actionPanel.getToolBarMargins().setAll(0); // This should be redundant in Stretch mode.
+        actionPanel.getActionGroupMargins().setRight(18); // leave room for scrollbar on the right
         actionPanel.setButtonPadding(4); // Give the buttons just a bit more padding than the default 2 pixels.
         actionPanel.addGroupRenamedListener((a, o, n) -> groupRenamed(o, n));
         actionPanel.addGroupRemovedListener((a, g) -> groupRemoved(g));

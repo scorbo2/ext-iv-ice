@@ -36,7 +36,6 @@ import org.apache.commons.io.FilenameUtils;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
@@ -243,11 +242,8 @@ public class IceExtension extends ImageViewerExtension {
         if (getQuickTagPositionFromConfig().contains(position)) {
             QuickTagPanel panel = new QuickTagPanel(position); // create a new one on each request
             quickTagPanels.add(panel);
-            JScrollPane scrollPane = new JScrollPane(panel);
-            scrollPane.getVerticalScrollBar().setUnitIncrement(10);
-            scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-            scrollPane.setName("ICE"); // short name in case our component gets added to a tab pane
-            return scrollPane;
+            panel.setName("ICE"); // short name in case our component gets added to a tab pane
+            return panel;
         }
 
         return null;
