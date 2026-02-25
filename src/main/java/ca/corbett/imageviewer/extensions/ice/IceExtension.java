@@ -31,12 +31,13 @@ import ca.corbett.imageviewer.extensions.ice.ui.formfield.TagHotkeyProperty;
 import ca.corbett.imageviewer.ui.ImageInstance;
 import ca.corbett.imageviewer.ui.MainWindow;
 import ca.corbett.imageviewer.ui.ThumbPanel;
+import ca.corbett.imageviewer.ui.UIReloadable;
+import ca.corbett.imageviewer.ui.actions.ReloadUIAction;
 import org.apache.commons.io.FilenameUtils;
 
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
@@ -61,7 +62,7 @@ import java.util.logging.Logger;
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
-public class IceExtension extends ImageViewerExtension {
+public class IceExtension extends ImageViewerExtension implements UIReloadable {
 
     private static final Logger log = Logger.getLogger(IceExtension.class.getName());
 
@@ -179,11 +180,13 @@ public class IceExtension extends ImageViewerExtension {
     @Override
     public void onActivate() {
         TagIndex.getInstance().load();
+        ReloadUIAction.getInstance().registerReloadable(this);
     }
 
     @Override
     public void onDeactivate() {
         TagIndex.getInstance().save();
+        ReloadUIAction.getInstance().unregisterReloadable(this);
     }
 
     /**
@@ -243,11 +246,8 @@ public class IceExtension extends ImageViewerExtension {
         if (getQuickTagPositionFromConfig().contains(position)) {
             QuickTagPanel panel = new QuickTagPanel(position); // create a new one on each request
             quickTagPanels.add(panel);
-            JScrollPane scrollPane = new JScrollPane(panel);
-            scrollPane.getVerticalScrollBar().setUnitIncrement(10);
-            scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-            scrollPane.setName("ICE"); // short name in case our component gets added to a tab pane
-            return scrollPane;
+            panel.setName("ICE"); // short name in case our component gets added to a tab pane
+            return panel;
         }
 
         return null;
@@ -501,4 +501,10 @@ public class IceExtension extends ImageViewerExtension {
         return label;
     }
 
+    @Override
+    public void reloadUI() {
+        for (QuickTagPanel panel : quickTagPanels) {
+            panel.refreshPreferredWidth(); // user may have changed the preferred quick panel width
+        }
+    }
 }
