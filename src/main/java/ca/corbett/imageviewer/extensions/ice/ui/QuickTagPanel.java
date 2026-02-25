@@ -88,6 +88,8 @@ public class QuickTagPanel extends JPanel {
     // Size for all icons in our ActionPanel:
     private static final int iconSize = 18;
 
+    private int preferredPanelWidth = 200; // customized via AppConfig
+
     private final ImageViewerExtension.ExtraPanelPosition position;
     private final ActionPanel actionPanel;
     private final File sourceRootDir;
@@ -118,6 +120,7 @@ public class QuickTagPanel extends JPanel {
         this.tagListsByName = new HashMap<>();
         this.actionPanel = buildActionPanel();
 
+        refreshPreferredWidth();
         setLayout(new BorderLayout());
         JScrollPane scrollPane = ScrollUtil.buildScrollPane(actionPanel, 10);
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
@@ -128,6 +131,18 @@ public class QuickTagPanel extends JPanel {
         }
 
         reset(); // Force a load of our contents
+    }
+
+    /**
+     * Looks up the currently-configured preferred width for quick tag panels
+     * from application settings and updates the instance variable.
+     */
+    public void refreshPreferredWidth() {
+        IntegerProperty prop = (IntegerProperty)AppConfig
+                .getInstance()
+                .getPropertiesManager()
+                .getProperty(IceExtension.quickTagPanelWidthProp);
+        preferredPanelWidth = prop == null ? 200 : prop.getValue();
     }
 
     /**
@@ -232,13 +247,8 @@ public class QuickTagPanel extends JPanel {
         ActionPanel actionPanel = new ActionPanel() {
             @Override
             public Dimension getPreferredSize() {
-                IntegerProperty prop = (IntegerProperty)AppConfig
-                        .getInstance()
-                        .getPropertiesManager()
-                        .getProperty(IceExtension.quickTagPanelWidthProp);
-                int panelWidth = prop == null ? 200 : prop.getValue();
                 Dimension superPref = super.getPreferredSize();
-                return new Dimension(panelWidth, superPref.height);
+                return new Dimension(preferredPanelWidth, superPref.height);
             }
         };
 
