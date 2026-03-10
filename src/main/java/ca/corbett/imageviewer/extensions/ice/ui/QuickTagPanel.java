@@ -1,6 +1,7 @@
 package ca.corbett.imageviewer.extensions.ice.ui;
 
 import ca.corbett.extras.EnhancedAction;
+import ca.corbett.extras.ScrollUtil;
 import ca.corbett.extras.LookAndFeelManager;
 import ca.corbett.extras.ScrollUtil;
 import ca.corbett.extras.TextInputDialog;
