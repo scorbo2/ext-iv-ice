@@ -1,6 +1,7 @@
 package ca.corbett.imageviewer.extensions.ice.ui;
 
 import ca.corbett.extras.EnhancedAction;
+import ca.corbett.extras.LookAndFeelManager;
 import ca.corbett.extras.ScrollUtil;
 import ca.corbett.extras.TextInputDialog;
 import ca.corbett.extras.actionpanel.ActionComponentType;
@@ -31,7 +32,11 @@ import javax.swing.ImageIcon;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.UIManager;
+import javax.swing.event.ChangeListener;
+import javax.swing.plaf.ColorUIResource;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.io.File;
@@ -90,6 +95,8 @@ public class QuickTagPanel extends JPanel {
 
     private int preferredPanelWidth = 200; // customized via AppConfig
 
+    private ColorTheme appliedTheme; // null = no theme applied, use system defaults
+    private final ChangeListener lafListener;
     private final ImageViewerExtension.ExtraPanelPosition position;
     private final ActionPanel actionPanel;
     private final File sourceRootDir;
@@ -131,6 +138,13 @@ public class QuickTagPanel extends JPanel {
         }
 
         reset(); // Force a load of our contents
+
+        // Set up a Look and Feel change listener so we can apply our workaround:
+        lafListener = e -> applyLafWorkaround();
+        LookAndFeelManager.addChangeListener(lafListener);
+
+        // And force the workaround here for immediate effect:
+        applyLafWorkaround();
     }
 
     /**
@@ -279,6 +293,7 @@ public class QuickTagPanel extends JPanel {
         // (otherwise, we'll let the Look and Feel decide all the colors)
         ColorTheme colorTheme = AppConfig.getInstance().getActionPanelTheme();
         if (colorTheme != null) {
+            appliedTheme = colorTheme;
             actionPanel.getColorOptions().setFromTheme(colorTheme);
 
             // Tweak it just a little - I want the action tray background to be the same as
@@ -288,10 +303,37 @@ public class QuickTagPanel extends JPanel {
             options.setToolBarButtonBackground(options.getActionButtonBackground());
         }
         else {
+            appliedTheme = null;
             actionPanel.getColorOptions().useSystemDefaults();
         }
 
         return actionPanel;
+    }
+
+    /**
+     * Works around an unfortunate bug in swing-extras regarding button colors in certain Look and Feels.
+     * This bug was not fixed before swing-extras 2.8 was released :(
+     */
+    public void applyLafWorkaround() {
+        // Work around an unfortunate bug in the swing-extras library
+        // where button borders are set to a very unpleasant default color:
+        if (appliedTheme != null) {
+            Color borderColor = switch (appliedTheme) {
+                case DEFAULT, MATRIX, DARK, ICE -> Color.DARK_GRAY;
+                case LIGHT, GOT_THE_BLUES, SHADES_OF_GRAY -> Color.GRAY;
+                case HOT_DOG_STAND -> Color.YELLOW; // because hot dog stands are ugly
+            };
+            UIManager.put("Button.default.startBorderColor", new ColorUIResource(borderColor));
+            reset(); // seems like overkill but a simple redraw won't hack it here.
+
+            // This is what I want to do instead of reset(),
+            // but it won't work because of the way ActionPanel builds its buttons:
+            //SwingUtilities.updateComponentTreeUI(actionPanel);
+
+            invalidate();
+            validate();
+            repaint();
+        }
     }
 
     /**
