@@ -2,6 +2,7 @@ ext-iv-ice Release Notes
 Author: Steve Corbett
 
 Version 3.0.0 [TODO - release date]
+  #68 - Add workaround for swing-extras ActionPanel bug :(
   #66 - Fix missing scrollbar in quick tag panel
   #61 - Respond to ActionPanel events for quick tag edits
   #59 - Now using ActionPanel for quick tags panel
