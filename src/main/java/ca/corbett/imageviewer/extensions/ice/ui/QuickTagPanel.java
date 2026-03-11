@@ -95,7 +95,6 @@ public class QuickTagPanel extends JPanel {
 
     private int preferredPanelWidth = 200; // customized via AppConfig
 
-    private ColorTheme appliedTheme; // null = no theme applied, use system defaults
     private final ChangeListener lafListener;
     private final ImageViewerExtension.ExtraPanelPosition position;
     private final ActionPanel actionPanel;
@@ -145,6 +144,14 @@ public class QuickTagPanel extends JPanel {
 
         // And force the workaround here for immediate effect:
         applyLafWorkaround();
+    }
+
+    /**
+     * Invoke this when the QuickTagPanel instance is no longer needed,
+     * to clean things up.
+     */
+    public void dispose() {
+        LookAndFeelManager.removeChangeListener(lafListener);
     }
 
     /**
@@ -293,7 +300,6 @@ public class QuickTagPanel extends JPanel {
         // (otherwise, we'll let the Look and Feel decide all the colors)
         ColorTheme colorTheme = AppConfig.getInstance().getActionPanelTheme();
         if (colorTheme != null) {
-            appliedTheme = colorTheme;
             actionPanel.getColorOptions().setFromTheme(colorTheme);
 
             // Tweak it just a little - I want the action tray background to be the same as
@@ -303,7 +309,6 @@ public class QuickTagPanel extends JPanel {
             options.setToolBarButtonBackground(options.getActionButtonBackground());
         }
         else {
-            appliedTheme = null;
             actionPanel.getColorOptions().useSystemDefaults();
         }
 
@@ -312,28 +317,44 @@ public class QuickTagPanel extends JPanel {
 
     /**
      * Works around an unfortunate bug in swing-extras regarding button colors in certain Look and Feels.
+     * The bug is that button borders are set to a very unpleasant default color for certain LaFs.
      * This bug was not fixed before swing-extras 2.8 was released :(
      */
     public void applyLafWorkaround() {
-        // Work around an unfortunate bug in the swing-extras library
-        // where button borders are set to a very unpleasant default color:
+        // If a custom ActionPanel theme is in effect, tweak it:
+        Color borderColor;
+        ColorTheme appliedTheme = AppConfig.getInstance().getActionPanelTheme();
         if (appliedTheme != null) {
-            Color borderColor = switch (appliedTheme) {
+            borderColor = switch (appliedTheme) {
                 case DEFAULT, MATRIX, DARK, ICE -> Color.DARK_GRAY;
                 case LIGHT, GOT_THE_BLUES, SHADES_OF_GRAY -> Color.GRAY;
                 case HOT_DOG_STAND -> Color.YELLOW; // because hot dog stands are ugly
             };
-            UIManager.put("Button.default.startBorderColor", new ColorUIResource(borderColor));
-            reset(); // seems like overkill but a simple redraw won't hack it here.
-
-            // This is what I want to do instead of reset(),
-            // but it won't work because of the way ActionPanel builds its buttons:
-            //SwingUtilities.updateComponentTreeUI(actionPanel);
-
-            invalidate();
-            validate();
-            repaint();
         }
+
+        // If we're letting the Look and Feel decide our colors, then we'll
+        // decide based on whether the current LaF is dark or light.
+        // This isn't perfect, but it's better than the default:
+        else {
+            borderColor = LookAndFeelManager.isDark() ? Color.DARK_GRAY : Color.GRAY;
+        }
+
+        // Now overwrite the UIManager property in question:
+        // (This will have effects beyond our own action panel, but it is what it is
+        //  until this bug is properly addressed in swing-extras)
+        UIManager.put("Button.default.startBorderColor", new ColorUIResource(borderColor));
+
+        // Rebuild the action panel's UI without reloading contents from disk:
+        actionPanel.setAutoRebuildEnabled(false);
+        actionPanel.setAutoRebuildEnabled(true); // forces an immediate rebuild
+
+        // This is what I want to do instead of the above,
+        // but it won't work because of the way ActionPanel builds its buttons:
+        //SwingUtilities.updateComponentTreeUI(actionPanel);
+
+        invalidate();
+        validate();
+        repaint();
     }
 
     /**

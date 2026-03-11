@@ -38,7 +38,6 @@ import org.apache.commons.io.FilenameUtils;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
@@ -188,6 +187,11 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
     public void onDeactivate() {
         TagIndex.getInstance().save();
         ReloadUIAction.getInstance().unregisterReloadable(this);
+        for (QuickTagPanel panel : quickTagPanels) {
+            panel.dispose();
+        }
+        quickTagPanels.clear();
+        tagPreviewPanels.clear();
     }
 
     /**
