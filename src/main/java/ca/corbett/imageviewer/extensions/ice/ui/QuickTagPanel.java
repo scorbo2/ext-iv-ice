@@ -353,7 +353,7 @@ public class QuickTagPanel extends JPanel {
         //SwingUtilities.updateComponentTreeUI(actionPanel);
 
         invalidate();
-        validate();
+        revalidate();
         repaint();
     }
 
