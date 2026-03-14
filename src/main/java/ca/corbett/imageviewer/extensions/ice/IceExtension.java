@@ -1,44 +1,47 @@
 package ca.corbett.imageviewer.extensions.ice;
 
 import ca.corbett.extensions.AppExtensionInfo;
+import ca.corbett.extras.EnhancedAction;
 import ca.corbett.extras.LookAndFeelManager;
 import ca.corbett.extras.RedispatchingMouseAdapter;
+import ca.corbett.extras.io.KeyStrokeManager;
 import ca.corbett.extras.properties.AbstractProperty;
 import ca.corbett.extras.properties.BooleanProperty;
 import ca.corbett.extras.properties.ComboProperty;
 import ca.corbett.extras.properties.IntegerProperty;
+import ca.corbett.extras.properties.KeyStrokeProperty;
 import ca.corbett.extras.properties.PropertiesManager;
 import ca.corbett.extras.properties.ShortTextProperty;
 import ca.corbett.imageviewer.AppConfig;
 import ca.corbett.imageviewer.ImageOperation;
 import ca.corbett.imageviewer.extensions.ImageViewerExtension;
+import ca.corbett.imageviewer.extensions.ice.actions.QuickTagToggleLeftAction;
+import ca.corbett.imageviewer.extensions.ice.actions.QuickTagToggleLeftRightAction;
+import ca.corbett.imageviewer.extensions.ice.actions.QuickTagToggleRightAction;
 import ca.corbett.imageviewer.extensions.ice.actions.RandomImageSetAction;
 import ca.corbett.imageviewer.extensions.ice.actions.ScanDirAction;
+import ca.corbett.imageviewer.extensions.ice.actions.SearchAction;
 import ca.corbett.imageviewer.extensions.ice.actions.TagDirStatsAction;
 import ca.corbett.imageviewer.extensions.ice.actions.TagMultipleImagesAction;
 import ca.corbett.imageviewer.extensions.ice.actions.TagSingleImageAction;
-import ca.corbett.imageviewer.extensions.ice.actions.SearchAction;
 import ca.corbett.imageviewer.extensions.ice.actions.TagStatsAction;
 import ca.corbett.imageviewer.extensions.ice.ui.QuickTagPanel;
 import ca.corbett.imageviewer.extensions.ice.ui.TagPreviewPanel;
+import ca.corbett.imageviewer.extensions.ice.ui.formfield.TagHotkeyProperty;
 import ca.corbett.imageviewer.ui.ImageInstance;
 import ca.corbett.imageviewer.ui.MainWindow;
 import ca.corbett.imageviewer.ui.ThumbPanel;
+import ca.corbett.imageviewer.ui.UIReloadable;
+import ca.corbett.imageviewer.ui.actions.ReloadUIAction;
 import org.apache.commons.io.FilenameUtils;
 
 import javax.swing.JComponent;
 import javax.swing.JLabel;
-import javax.swing.JMenu;
-import javax.swing.JMenuItem;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.KeyStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.FlowLayout;
-import java.awt.event.InputEvent;
-import java.awt.event.KeyEvent;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -59,7 +62,7 @@ import java.util.logging.Logger;
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
-public class IceExtension extends ImageViewerExtension {
+public class IceExtension extends ImageViewerExtension implements UIReloadable {
 
     private static final Logger log = Logger.getLogger(IceExtension.class.getName());
 
@@ -77,11 +80,19 @@ public class IceExtension extends ImageViewerExtension {
             "Right",
             "Both left and right"
     };
-    public static final String tagPreviewPanelPositionProp = "ICE.General.tagPreviewPanelPosition";
-    public static final String quickTagPanelPositionProp = "ICE.General.quickTagPanelPosition";
-    public static final String quickTagPanelWidthProp = "ICE.General.quickTagPanelWidth";
+    public static final String tagPreviewPanelPositionProp = "ICE.ICE options.tagPreviewPanelPosition";
+    public static final String quickTagPanelPositionProp = "ICE.ICE options.quickTagPanelPosition";
+    public static final String quickTagPanelWidthProp = "ICE.ICE options.quickTagPanelWidth";
     public static final String fontSizeProp = "Thumbnails.Companion files.linkFontSize";
-    public static final String quickTagSourceProp = "Hidden.quickTags.source";
+    public static final String quickTagLeftSourceProp = "Hidden.quickTagsLeft.source";
+    public static final String quickTagRightSourceProp = "Hidden.quickTagsRight.source";
+    public static final String imageTagShortcutProp = AppConfig.KEYSTROKE_PREFIX + "ICE - General.quickTagPanel";
+    public static final String tagHotkeyPropPrefix = AppConfig.KEYSTROKE_PREFIX + "ICE - General.tagHotKey";
+
+    public static final String QUICK_TAG_TOGGLE = AppConfig.KEYSTROKE_PREFIX + "ICE - QuickTag toggles.";
+    public static final String quickTagShortcutLeftProp = QUICK_TAG_TOGGLE + "quickTagPanelLeft";
+    public static final String quickTagShortcutRightProp = QUICK_TAG_TOGGLE + "quickTagPanelRight";
+    public static final String quickTagShortcutLeftRightProp = QUICK_TAG_TOGGLE + "quickTagPanelLeftRight";
 
     private final List<TagPreviewPanel> tagPreviewPanels = new ArrayList<>();
     private final List<QuickTagPanel> quickTagPanels = new ArrayList<>();
@@ -116,18 +127,71 @@ public class IceExtension extends ImageViewerExtension {
         list.add(new IntegerProperty(quickTagPanelWidthProp, "Quick tag panel width:", 200, 120, 300, 10));
         list.add(new IntegerProperty(fontSizeProp, "Hyperlink font size", 10, 8, 16, 1));
         list.add(new BooleanProperty(TagIndex.PROP_NAME, "Enable tag index for faster searches", true));
-        list.add(new ShortTextProperty(quickTagSourceProp, "quickTagsSource", QuickTagPanel.DEFAULT_SOURCE_NAME).setExposed(false));
+        list.add(new ShortTextProperty(quickTagLeftSourceProp, "quickTagsLeftSource",
+                                       QuickTagPanel.DEFAULT_SOURCE_NAME).setExposed(false));
+        list.add(new ShortTextProperty(quickTagRightSourceProp, "quickTagsRightSource",
+                                       QuickTagPanel.DEFAULT_SOURCE_NAME).setExposed(false));
+        list.add(new KeyStrokeProperty(imageTagShortcutProp, "Image tag dialog:",
+                                       KeyStrokeManager.parseKeyStroke("Ctrl+G"),
+                                       TagSingleImageAction.getInstance())
+                         .setAllowBlank(true)
+                         .setReservedKeyStrokes(AppConfig.RESERVED_KEYSTROKES));
+        list.add(new KeyStrokeProperty(quickTagShortcutLeftProp, "Toggle left position:",
+                                       KeyStrokeManager.parseKeyStroke("ctrl+left"),
+                                       QuickTagToggleLeftAction.getInstance())
+                         .setAllowBlank(true)
+                         .setReservedKeyStrokes(AppConfig.RESERVED_KEYSTROKES)
+                         .setHelpText("Toggles a QuickTag panel in the left position."));
+        list.add(new KeyStrokeProperty(quickTagShortcutRightProp, "Toggle right position:",
+                                       KeyStrokeManager.parseKeyStroke("ctrl+right"),
+                                       QuickTagToggleRightAction.getInstance())
+                         .setAllowBlank(true)
+                         .setReservedKeyStrokes(AppConfig.RESERVED_KEYSTROKES)
+                         .setHelpText("Toggles a QuickTag panel in the right position."));
+        list.add(new KeyStrokeProperty(quickTagShortcutLeftRightProp, "Toggle both positions:",
+                                       KeyStrokeManager.parseKeyStroke("ctrl+up"),
+                                       QuickTagToggleLeftRightAction.getInstance())
+                         .setAllowBlank(true)
+                         .setReservedKeyStrokes(AppConfig.RESERVED_KEYSTROKES)
+                         .setHelpText("Toggles a QuickTag panel in both left and right positions."));
+
+        // Add a few configurable hotkeys for commonly-used tags:
+        for (int i = 1; i <= 8; i++) {
+            // Why 8? I dunno, seems like a reasonable number.
+            // Too many and the properties form will scroll vertically too much.
+            // Too few and there's not enough value in this feature.
+            // We'll use Ctrl+F1 through Ctrl+F8 as the default hotkeys, and there
+            // will be no tags assigned by default. The user can configure
+            // as needed, or blank them all out if they don't want to use this feature.
+            String helpText = "<html>Assign commonly used tags to a hotkey for<br>"
+                    + "quick application to the currently selected image.<br>" +
+                    "You can comma-separate the list to set more than one tag at a time.<br>" +
+                    "The tags are added to the image's tag list, unless they are already there.</html>";
+            list.add(new TagHotkeyProperty(tagHotkeyPropPrefix + i, "Tag hotkey " + i + ":")
+                             .setKeyStroke(KeyStrokeManager.parseKeyStroke("Ctrl+F" + i))
+                             .setAllowBlank(true)
+                             .setReservedKeyStrokes(AppConfig.RESERVED_KEYSTROKES)
+                             .setHelpText(helpText));
+        }
+
         return list;
     }
 
     @Override
     public void onActivate() {
         TagIndex.getInstance().load();
+        ReloadUIAction.getInstance().registerReloadable(this);
     }
 
     @Override
     public void onDeactivate() {
         TagIndex.getInstance().save();
+        ReloadUIAction.getInstance().unregisterReloadable(this);
+        for (QuickTagPanel panel : quickTagPanels) {
+            panel.dispose();
+        }
+        quickTagPanels.clear();
+        tagPreviewPanels.clear();
     }
 
     /**
@@ -179,75 +243,54 @@ public class IceExtension extends ImageViewerExtension {
     public JComponent getExtraPanelComponent(ExtraPanelPosition position) {
         if (position == getTagPreviewPositionFromConfig()) {
             TagPreviewPanel tagPreviewPanel = new TagPreviewPanel(); // create a new one for each request... other extensions may ask for it
+            tagPreviewPanel.setName("ICE"); // short name in case our component gets added to a tab pane
             tagPreviewPanels.add(tagPreviewPanel);
             return tagPreviewPanel;
         }
 
         if (getQuickTagPositionFromConfig().contains(position)) {
-            QuickTagPanel panel = new QuickTagPanel(); // create a new one on each request
+            QuickTagPanel panel = new QuickTagPanel(position); // create a new one on each request
             quickTagPanels.add(panel);
-            JScrollPane scrollPane = new JScrollPane(panel);
-            scrollPane.getVerticalScrollBar().setUnitIncrement(10);
-            scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-            return scrollPane;
+            panel.setName("ICE"); // short name in case our component gets added to a tab pane
+            return panel;
         }
 
         return null;
     }
 
     /**
-     * Returns the ICE top-level menu which is to be added to the application's main menu bar.
+     * We have a top-level "ICE" menu with various actions in it.
+     * This menu is presented in all browse modes.
      */
     @Override
-    public List<JMenu> getTopLevelMenus(MainWindow.BrowseMode browseMode) {
-        JMenu iceMenu = new JMenu("ICE");
-        iceMenu.setMnemonic(KeyEvent.VK_I);
-
-        JMenuItem searchItem = new JMenuItem(new SearchAction());
-        iceMenu.add(searchItem);
-
-        JMenuItem tagSingleImageItem = new JMenuItem(new TagSingleImageAction());
-        tagSingleImageItem.setMnemonic(KeyEvent.VK_G);
-        tagSingleImageItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_G, InputEvent.CTRL_DOWN_MASK));
-        iceMenu.add(tagSingleImageItem);
-
-        JMenuItem tagMultiImagesItem = new JMenuItem(new TagMultipleImagesAction("Tag images..."));
-        iceMenu.add(tagMultiImagesItem);
-
-        if (browseMode == MainWindow.BrowseMode.FILE_SYSTEM) {
-            if (TagIndex.isEnabled()) {
-                JMenuItem scanDirItem = new JMenuItem(new ScanDirAction("Tag scan: current directory", false));
-                iceMenu.add(scanDirItem);
-
-                JMenuItem scanDirItemRecursive = new JMenuItem(
-                        new ScanDirAction("Tag scan: current directory recursively", true));
-                iceMenu.add(scanDirItemRecursive);
-            }
-        }
-
-        iceMenu.add(new TagStatsAction());
-        if (browseMode == MainWindow.BrowseMode.FILE_SYSTEM) {
-            iceMenu.add(new JMenuItem(new TagDirStatsAction()));
-            iceMenu.add(new JMenuItem(new RandomImageSetAction()));
-        }
-
-        return List.of(iceMenu);
+    public List<String> getTopLevelMenus(MainWindow.BrowseMode browseMode) {
+        return List.of("ICE");
     }
 
-    /**
-     * I wanted to use ctrl+t for "tag" but it was already in use by the
-     * image transform extension (ctrl+t for "transform"). One day I'll
-     * make extension keyboard shortcuts user-configurable.
-     */
     @Override
-    public boolean handleKeyboardShortcut(KeyEvent e) {
-        if (e.getKeyCode() == KeyEvent.VK_G) {
-            if ((e.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) > 0) {
-                new TagSingleImageAction().actionPerformed(null);
-                return true;
+    public List<EnhancedAction> getMenuActions(String topLevelMenu, MainWindow.BrowseMode browseMode) {
+        List<EnhancedAction> actions = new ArrayList<>();
+
+        if (topLevelMenu.equals("ICE")) {
+            actions.add(new SearchAction());
+            actions.add(TagSingleImageAction.getInstance());
+            actions.add(new TagMultipleImagesAction());
+
+            // Only add scan actions if the tag index is enabled:
+            if (browseMode == MainWindow.BrowseMode.FILE_SYSTEM && TagIndex.isEnabled()) {
+                actions.add(new ScanDirAction("Tag scan: current directory", false));
+                actions.add(new ScanDirAction("Tag scan: current directory recursively", true));
+            }
+
+            actions.add(new TagStatsAction());
+
+            if (browseMode == MainWindow.BrowseMode.FILE_SYSTEM) {
+                actions.add(new TagDirStatsAction());
+                actions.add(new RandomImageSetAction());
             }
         }
-        return false;
+
+        return actions;
     }
 
     /**
@@ -463,4 +506,11 @@ public class IceExtension extends ImageViewerExtension {
         return label;
     }
 
+    @Override
+    public void reloadUI() {
+        for (QuickTagPanel panel : quickTagPanels) {
+            panel.refreshPreferredWidth(); // user may have changed the preferred quick panel width
+            panel.applyLafWorkaround(); // user may have changed color scheme
+        }
+    }
 }

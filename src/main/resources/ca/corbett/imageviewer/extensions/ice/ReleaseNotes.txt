@@ -1,6 +1,21 @@
 ext-iv-ice Release Notes
 Author: Steve Corbett
 
+Version 3.0.0 [2026-03-13]
+  #68 - Add workaround for swing-extras ActionPanel bug :(
+  #66 - Fix missing scrollbar in quick tag panel
+  #61 - Respond to ActionPanel events for quick tag edits
+  #59 - Now using ActionPanel for quick tags panel
+  #57 - ImageViewer has upgraded to swing-extras 2.8
+  #56 - Fix bad alignment of tag preview panel
+  #55 - RandomImageSetDialog: fix missing progress bar
+  #54 - Search: add sort options
+  #51 - Add keyboard shortcuts for quick tag panels
+  #43 - Ensure TagPreviewPanel shows correct shortcut
+  #40 - Upgrade to ImageViewer 3.0 (major update!)
+  #39 - Persist left/right quick tag panels separately
+  #32 - Add configurable hotkeys for commonly-used tags
+
 Version 2.4.0 [2026-01-26]
   #34 - Add "Tag directory stats" dialog in filesystem mode
   #33 - Auto-set keyboard focus to text field in batch tag dialog

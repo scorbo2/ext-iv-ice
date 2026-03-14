@@ -15,7 +15,9 @@ import java.util.logging.Logger;
 
 public class TagList {
     private static final Logger log = Logger.getLogger(TagList.class.getName());
-    private static final Set<Character> DISALLOWED_TAG_CHARS = Set.of('{', '}', '|', ',');
+    public static final Set<Character> DISALLOWED_TAG_CHARS = Set.of('{', '}', '|', ',');
+
+    public static final String TAG_FORMAT_ERROR = "Tags cannot contain the characters: { } |";
 
     private final Set<String> tags = new LinkedHashSet<>();
     private File persistenceFile;
@@ -155,6 +157,29 @@ public class TagList {
             }
         }
         return sb.toString();
+    }
+
+    /**
+     * Reports whether the given tag string is non-empty and free of disallowed characters.
+     *
+     * @param tagString Any candidate tag string, comma-separated or a single tag.
+     * @return true if the tag string is non-empty and valid, false if it is null, blank, or contains disallowed characters.
+     */
+    public static boolean isValidNonEmptyTagString(String tagString) {
+        if (tagString == null || tagString.isBlank()) {
+            return false;
+        }
+
+        // Check if any tag in the given tagString (which may be comma-separated) contains disallowed characters:
+        String[] tags = tagString.split(",");
+        for (String tag : tags) {
+            for (char c : tag.toCharArray()) {
+                if (DISALLOWED_TAG_CHARS.contains(c)) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     public void save() {

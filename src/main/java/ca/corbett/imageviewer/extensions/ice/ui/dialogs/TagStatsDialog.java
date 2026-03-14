@@ -1,6 +1,6 @@
 package ca.corbett.imageviewer.extensions.ice.ui.dialogs;
 
-import ca.corbett.extras.image.ImageUtil;
+import ca.corbett.extras.ScrollUtil;
 import ca.corbett.extras.io.FileSystemUtil;
 import ca.corbett.forms.Alignment;
 import ca.corbett.forms.FormPanel;
@@ -35,7 +35,7 @@ public class TagStatsDialog extends JDialog {
         setResizable(false);
         setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         setLayout(new BorderLayout());
-        add(buildFormPanel(), BorderLayout.CENTER);
+        add(ScrollUtil.buildScrollPane(buildFormPanel()), BorderLayout.CENTER);
         add(buildButtonPanel(), BorderLayout.SOUTH);
     }
 

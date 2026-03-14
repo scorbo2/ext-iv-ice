@@ -180,4 +180,119 @@ class TagListTest {
         // THEN we should see the replacement worked:
         assertEquals("hello, there, done!", tagList.toString());
     }
+
+    @Test
+    public void isValidNonEmptyTagString_withNull_shouldReturnFalse() {
+        // GIVEN a null tag string:
+        String tagString = null;
+
+        // WHEN we validate it:
+        boolean result = TagList.isValidNonEmptyTagString(tagString);
+
+        // THEN it should be invalid:
+        assertFalse(result);
+    }
+
+    @Test
+    public void isValidNonEmptyTagString_withBlankString_shouldReturnFalse() {
+        // GIVEN blank tag strings:
+        String[] blankInputs = {"", "   ", "\t", "\n", "  \t\n  "};
+
+        for (String input : blankInputs) {
+            // WHEN we validate each one:
+            boolean result = TagList.isValidNonEmptyTagString(input);
+
+            // THEN they should all be invalid:
+            assertFalse(result, "Expected blank string '" + input + "' to be invalid");
+        }
+    }
+
+    @Test
+    public void isValidNonEmptyTagString_withValidSingleTag_shouldReturnTrue() {
+        // GIVEN valid single tag strings:
+        String[] validInputs = {"hello", "world", "tag123", "my-tag", "my_tag", "tag.name"};
+
+        for (String input : validInputs) {
+            // WHEN we validate each one:
+            boolean result = TagList.isValidNonEmptyTagString(input);
+
+            // THEN they should all be valid:
+            assertTrue(result, "Expected valid tag '" + input + "' to be valid");
+        }
+    }
+
+    @Test
+    public void isValidNonEmptyTagString_withValidCommaSeparatedTags_shouldReturnTrue() {
+        // GIVEN valid comma-separated tag strings:
+        String[] validInputs = {
+            "hello,world",
+            "tag1,tag2,tag3",
+            "my-tag,your-tag",
+            "a,b,c,d,e"
+        };
+
+        for (String input : validInputs) {
+            // WHEN we validate each one:
+            boolean result = TagList.isValidNonEmptyTagString(input);
+
+            // THEN they should all be valid:
+            assertTrue(result, "Expected valid tags '" + input + "' to be valid");
+        }
+    }
+
+    @Test
+    public void isValidNonEmptyTagString_withLeftBrace_shouldReturnFalse() {
+        // GIVEN tag strings containing left brace:
+        String[] invalidInputs = {"{hello", "hel{lo", "hello{", "{", "tag1,{tag2"};
+
+        for (String input : invalidInputs) {
+            // WHEN we validate each one:
+            boolean result = TagList.isValidNonEmptyTagString(input);
+
+            // THEN they should all be invalid:
+            assertFalse(result, "Expected tag with '{' character '" + input + "' to be invalid");
+        }
+    }
+
+    @Test
+    public void isValidNonEmptyTagString_withRightBrace_shouldReturnFalse() {
+        // GIVEN tag strings containing right brace:
+        String[] invalidInputs = {"}hello", "hel}lo", "hello}", "}", "tag1,tag2}"};
+
+        for (String input : invalidInputs) {
+            // WHEN we validate each one:
+            boolean result = TagList.isValidNonEmptyTagString(input);
+
+            // THEN they should all be invalid:
+            assertFalse(result, "Expected tag with '}' character '" + input + "' to be invalid");
+        }
+    }
+
+    @Test
+    public void isValidNonEmptyTagString_withPipe_shouldReturnFalse() {
+        // GIVEN tag strings containing pipe character:
+        String[] invalidInputs = {"|hello", "hel|lo", "hello|", "|", "tag1,|tag2"};
+
+        for (String input : invalidInputs) {
+            // WHEN we validate each one:
+            boolean result = TagList.isValidNonEmptyTagString(input);
+
+            // THEN they should all be invalid:
+            assertFalse(result, "Expected tag with '|' character '" + input + "' to be invalid");
+        }
+    }
+
+    @Test
+    public void isValidNonEmptyTagString_withMultipleDisallowedChars_shouldReturnFalse() {
+        // GIVEN tag strings containing multiple disallowed characters:
+        String[] invalidInputs = {"{hello}", "{tag1}|{tag2}", "a{b|c}d", "|||{{{}}}"};
+
+        for (String input : invalidInputs) {
+            // WHEN we validate each one:
+            boolean result = TagList.isValidNonEmptyTagString(input);
+
+            // THEN they should all be invalid:
+            assertFalse(result, "Expected tag with multiple disallowed characters '" + input + "' to be invalid");
+        }
+    }
 }

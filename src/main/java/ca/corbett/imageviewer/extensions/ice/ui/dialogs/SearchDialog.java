@@ -27,10 +27,32 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
 
+/**
+ * Presents a dialog for searching images based on their tags.
+ * This dialog works in both filesystem mode and in ImageSet mode.
+ * In filesystem mode, you can specify a directory with optional recursion.
+ * In ImageSet mode, you can specify which image sets to search through.
+ * <p>
+ * <b>Specifying search parameters</b> - You can fill in <b>at least one</b>
+ * of the following tag fields:
+ * </p>
+ * <ul>
+ *     <li><b>ALL of these tags</b> candidate images must contain all specified tags in order to match.</li>
+ *     <li><b>ANY of these tags</b> candidate images must contain at least one of the specified tags in order to match.</li>
+ *     <li><b>NONE of these tags</b> candidate images must not contain any of the specified tags in order to match.</li>
+ * </ul>
+ * <p>
+ *     <b>Controlling sort order</b> - by default, search results are returned in whatever
+ *     order they are found. You can use the "sort search results by" dropdown to specify a different sort order.
+ * </p>
+ *
+ * @author <a href="https://github.com/scorbo2">scorbo2</a>
+ */
 public class SearchDialog extends JDialog {
 
     private static final Logger log = Logger.getLogger(SearchDialog.class.getName());
@@ -53,6 +75,7 @@ public class SearchDialog extends JDialog {
     private ShortTextField tagFieldAll;
     private ShortTextField tagFieldAny;
     private ShortTextField tagFieldNone;
+    private ComboField<SearchThread.SortMode> sortModeField;
 
     public SearchDialog() {
         this("Search");
@@ -60,7 +83,7 @@ public class SearchDialog extends JDialog {
 
     public SearchDialog(String title) {
         super(MainWindow.getInstance(), title, true);
-        setSize(new Dimension(630, 400));
+        setSize(new Dimension(630, 440));
         setResizable(false);
         setLocationRelativeTo(MainWindow.getInstance());
         setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
@@ -81,7 +104,8 @@ public class SearchDialog extends JDialog {
 
             @Override
             public void progressComplete() {
-                handleSearchComplete(searchThread.wasCanceled(), searchThread.getSearchResults());
+                SearchThread.SortMode sortMode = sortModeField.getSelectedItem();
+                handleSearchComplete(searchThread.wasCanceled(), searchThread.getSearchResults(sortMode));
             }
         });
         progressDialog.runWorker(searchThread, true);
@@ -176,6 +200,11 @@ public class SearchDialog extends JDialog {
         tagFieldNone.addFieldValidator(new TagFieldValidator());
         formPanel.add(tagFieldNone);
         formPanel.add(LabelField.createPlainHeaderLabel("(fill in at least one)"));
+
+        sortModeField = new ComboField<>("Sort search results by:",
+                                         Arrays.asList(SearchThread.SortMode.values()), 0);
+        sortModeField.getMargins().setTop(12);
+        formPanel.add(sortModeField);
 
         return formPanel;
     }

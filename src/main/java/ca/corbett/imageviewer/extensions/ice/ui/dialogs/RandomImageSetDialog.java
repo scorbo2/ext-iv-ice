@@ -1,6 +1,7 @@
 package ca.corbett.imageviewer.extensions.ice.ui.dialogs;
 
 import ca.corbett.extras.MessageUtil;
+import ca.corbett.extras.image.ImageUtil;
 import ca.corbett.extras.io.FileSystemUtil;
 import ca.corbett.extras.progress.MultiProgressDialog;
 import ca.corbett.extras.progress.SimpleProgressWorker;
@@ -12,7 +13,6 @@ import ca.corbett.forms.fields.LabelField;
 import ca.corbett.forms.fields.NumberField;
 import ca.corbett.imageviewer.extensions.ice.TagList;
 import ca.corbett.imageviewer.ui.MainWindow;
-import ca.corbett.imageviewer.ui.ThumbContainerPanel;
 import ca.corbett.imageviewer.ui.imagesets.ImageSet;
 import ca.corbett.imageviewer.ui.imagesets.ImageSetManager;
 import org.apache.commons.io.FilenameUtils;
@@ -138,7 +138,6 @@ public class RandomImageSetDialog extends JDialog {
         // Fire off a worker thread as the scan may take some time:
         boolean isRecursive = recursiveField.isChecked();
         MultiProgressDialog progressDialog = new MultiProgressDialog(this, "Scanning directory...");
-        progressDialog.setInitialShowDelayMS(500);
         progressDialog.runWorker(new RandomImageSetDialog.ScanWorker(directory, isRecursive), true);
     }
 
@@ -334,7 +333,24 @@ public class RandomImageSetDialog extends JDialog {
             int taggedCount = 0;
             int untaggedCount = 0;
 
-            List<File> allFiles = FileSystemUtil.findFiles(dir, recursive, ThumbContainerPanel.getImageExtensions());
+            // Enumerating all files is crazy slow on large directories, particularly
+            // on machines with mechanical hard drives. This is a problem, because
+            // our progress dialog won't show up until we invoke fireProgressBegins(),
+            // and we can't properly invoke that until we know how many files we have to process.
+            // So, let's fire progressBegins with a dummy step count, just to get the
+            // dialog to show up. This gives the user visual feedback that we are working:
+            fireProgressBegins(1);
+
+            // Now do the heavy work. Our progress dialog is visible at this point, unless
+            // the caller set an initial show delay. Not much we can do in that case.
+            List<File> allFiles = FileSystemUtil.findFiles(dir, recursive)
+                                                .stream()
+                                                .filter(ImageUtil::isImageFile)
+                                                .toList();
+
+            // Now we can set our progress bar bounds with actual values:
+            // This does mean that callers get two "progress begins" events, but that's
+            // better than the alternative of having no progress dialog at all for long-running scans:
             fireProgressBegins(allFiles.size());
 
             try {

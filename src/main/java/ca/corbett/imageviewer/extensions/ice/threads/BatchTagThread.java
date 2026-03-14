@@ -1,5 +1,6 @@
 package ca.corbett.imageviewer.extensions.ice.threads;
 
+import ca.corbett.extras.image.ImageUtil;
 import ca.corbett.extras.io.FileSystemUtil;
 import ca.corbett.extras.progress.SimpleProgressWorker;
 import ca.corbett.imageviewer.extensions.ice.TagIndex;
@@ -125,7 +126,10 @@ public class BatchTagThread extends SimpleProgressWorker {
         // supplied with one, or by interrogating our imageSet, if we were given one.
         List<File> imageFiles;
         if (startDir != null) {
-            imageFiles = FileSystemUtil.findFiles(startDir, isRecursive, ThumbContainerPanel.getImageExtensions());
+            imageFiles = FileSystemUtil.findFiles(startDir, isRecursive)
+                                       .stream()
+                                       .filter(ImageUtil::isImageFile)
+                                       .toList();
         }
         else if (imageSet != null) {
             List<String> imagePaths = imageSet.getImageFilePaths();
