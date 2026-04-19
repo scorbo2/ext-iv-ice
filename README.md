@@ -121,8 +121,8 @@ remove the extension, revisit the extension manager dialog, select "ICE" in the 
 
 ### Option 2: Manual download
 
-You can manually download the extension jar: 
-[ext-iv-ice-3.0.0.jar](https://www.corbett.ca/apps/ImageViewer/extensions/3.0/ext-iv-ice-3.0.0.jar)
+You can manually download the extension jar:
+[ext-iv-ice-3.2.0.jar](https://www.corbett.ca/apps/ImageViewer/extensions/3.2/ext-iv-ice-3.2.0.jar)
 
 Save it to your ~/.ImageViewer/extensions directory and restart the application.
 
@@ -134,12 +134,19 @@ Note: you must have run `mvn install` in the main ImageViewer repo first, as tha
 ```shell
 git clone https://github.com/scorbo2/ext-iv-ice.git
 cd ext-iv-ice
+
+# Note: you must have run `mvn install` in the main ImageViewer repo first, as that is a dependency for this code.
 mvn package
 
 # Copy the result to the extensions directory:
 cd target
-cp ext-iv-ice-3.0.0.jar ~/.ImageViewer/extensions
+cp ext-iv-ice-3.2.0.jar ~/.ImageViewer/extensions
 ```
+
+## More information
+
+- Project GitHub page: [ext-iv-ice](https://github.com/scorbo2/ext-iv-ice)
+- Issues page: [ext-iv-ice issues](https://github.com/scorbo2/ext-iv-ice/issues)
 
 ## License
 
