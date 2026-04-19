@@ -129,7 +129,6 @@ Save it to your ~/.ImageViewer/extensions directory and restart the application.
 ### Option 3: build from source
 
 You can clone this repo and build the extension jar with Maven (Java 17 or higher required).
-Note: you must have run `mvn install` in the main ImageViewer repo first, as that is a dependency for this code.
 
 ```shell
 git clone https://github.com/scorbo2/ext-iv-ice.git
