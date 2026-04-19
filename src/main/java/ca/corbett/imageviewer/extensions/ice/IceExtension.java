@@ -510,7 +510,6 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
     public void reloadUI() {
         for (QuickTagPanel panel : quickTagPanels) {
             panel.refreshPreferredWidth(); // user may have changed the preferred quick panel width
-            panel.applyLafWorkaround(); // user may have changed color scheme
         }
     }
 }
