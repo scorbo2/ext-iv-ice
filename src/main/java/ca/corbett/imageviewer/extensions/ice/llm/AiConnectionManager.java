@@ -186,8 +186,13 @@ public class AiConnectionManager {
         AbstractProperty prop = propsManager.getProperty(IceExtension.llmUrlProp);
         if (prop instanceof ShortTextProperty urlProp) {
             try {
-                llmUrl = new URL(urlProp.getValue().trim()); // base url
-                llmUrl = appendPath(llmUrl, "/v1/chat/completions"); // hard-coded API path
+                String urlString = urlProp.getValue();
+                if (urlString == null || urlString.isBlank()) {
+                    log.warning("LLM URL is blank - LLM feature is disabled :(");
+                    return;
+                }
+                llmUrl = new URL(urlString.trim()); // this gives us the base url, example http://localhost:8080
+                llmUrl = appendPath(llmUrl, "/v1/chat/completions"); // we'll hard-code the API path
             }
             catch (Exception e) {
                 log.severe("Invalid LLM URL: " + urlProp.getValue() + " - disabling LLM feature");
@@ -203,7 +208,8 @@ public class AiConnectionManager {
             llmModel = modelProp.getValue().trim();
             if (llmModel.isEmpty()) {
                 // This is not necessarily a problem, but we have no way of knowing if the server requires it or not:
-                log.warning("LLM model is blank - if your server requires a model name, requests will fail.");
+                // We could log a warning here, but it feels too noisy. So we'll put it at FINE level.
+                log.fine("LLM model is blank - if your server requires a model name, requests will fail.");
             }
         }
         else {
@@ -215,7 +221,8 @@ public class AiConnectionManager {
             llmApiKey = apiKeyProp.getPassword().trim();
             if (llmApiKey.isEmpty()) {
                 // This is not necessarily a problem, but we have no way of knowing if the server requires it or not:
-                log.warning("LLM API key is blank - if authentication is required, requests will fail.");
+                // Again, we could log this, but it feels noisy. If the user gets a 401, they'll know why.
+                log.fine("LLM API key is blank - if authentication is required, requests will fail.");
             }
         }
         else {
