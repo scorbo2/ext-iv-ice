@@ -96,8 +96,9 @@ public class AiRequestThread extends SimpleProgressWorker {
                     }
                     catch (Exception e) {
                         // We were unable to parse it, so best we can do is show the generic error code:
-                        log.severe("LLM request failed with status code " + response.statusCode()
-                                           + ": " + response.body()); // Ugly! Raw response bodies in the log??
+                        // (we *could* log the response body, but it might be huge, and it might leak
+                        //  server info into the log, so we'll just let it go)
+                        log.severe("LLM request failed with status code " + response.statusCode());
                     }
                     onComplete.onComplete(noTags());
                     return;
