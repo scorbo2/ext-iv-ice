@@ -33,6 +33,10 @@ import java.util.logging.Logger;
  *         have a "batch mode", where it goes through all images in a directory, with optional recursion.</li>
  *     <li>Currently, the auto-tag can only be triggered from a configurable keyboard shortcut. It would be
  *         nice to have a menu item or toolbar button or right-click popup option or something.</li>
+ *     <li>Currently, we blindly append all LLM-suggested tags to the image's tag list. Would be a much
+ *         nicer UX to pop up a dialog showing the suggested tags, and allow user editing before
+ *         confirmation. This is especially nice if the LLM was not given a constrained tag list, because
+ *         the suggested tags may be wrong (or inconsistent).</li>
  * </ul>
  * <p>
  *     The above TODOs will be handled in future tickets, if the initial proof-of-concept works out.

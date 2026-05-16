@@ -3,7 +3,7 @@
   "messages": [
     {
       "role": "system",
-      "content": "Your job is to analyze images and supply a comma-separated list of tags that apply to that image. You may only choose tags from this list: {{TAGS}}. The resulting tag list should be comma-separated, with no extra punctuation or surrounding text. Return JUST the tag list. (Anything else will confuse the parser). If none of the given tags apply to the image, return the fixed string 'none'."
+      "content": "Your job is to analyze images and supply a comma-separated list of tags that apply to that image. You may only choose tags from this list: {{TAGS}}. The resulting tag list should be comma-separated, with no extra punctuation or surrounding text. Return ONLY the tag list - anything else will confuse the parser. If none of the given tags apply to the image, return the fixed string 'none'."
     },
     {
       "role": "user",

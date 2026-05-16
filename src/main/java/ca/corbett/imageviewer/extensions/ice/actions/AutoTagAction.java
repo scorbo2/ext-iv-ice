@@ -9,6 +9,7 @@ import ca.corbett.imageviewer.ui.ImageInstance;
 import ca.corbett.imageviewer.ui.MainWindow;
 import org.apache.commons.io.FilenameUtils;
 
+import javax.swing.SwingUtilities;
 import java.awt.event.ActionEvent;
 import java.io.File;
 
@@ -56,16 +57,20 @@ public class AutoTagAction extends EnhancedAction {
 
         // Find the tag file for this image.
         // It's not an error if this file does not exist...
-        // We'll just end up creating it when we get the results from the LLM.
+        // We'll just end up creating it if/when we get the results from the LLM.
         File tagFile = new File(currentImage.getImageFile().getParentFile(),
                                 FilenameUtils.getBaseName(currentImage.getImageFile().getName()) + ".ice");
         TagList originalTags = TagList.fromFile(tagFile); // might be empty; that's okay
 
         AiConnectionManager aiManager = new AiConnectionManager(requestTemplate, requestTemplateTagless);
         aiManager.requestAutoTag(imageFile, tagList -> {
-            // Wonky case: if originalTags isn't empty, and we get back NO_TAGS from the LLM, do nothing:
-            if (!originalTags.isEmpty() && tagList.isEmpty()
-                    || (tagList.size() == 1 && tagList.getTags().get(0).equals(AiConnectionManager.NO_TAGS))) {
+            // An "empty" return is one where we got back either a completely empty list,
+            // or a list with just the NO_TAG sentinel value.
+            boolean isEmpty = tagList.isEmpty()
+                    || (tagList.size() == 1 && tagList.getTags().get(0).equals(AiConnectionManager.NO_TAGS));
+
+            // Wonky case: if originalTags isn't empty, and we get back an "empty" list, then do nothing.
+            if (!originalTags.isEmpty() && isEmpty) {
                 return;
             }
 
@@ -75,7 +80,10 @@ public class AutoTagAction extends EnhancedAction {
             TagIndex.getInstance().addOrUpdateEntry(imageFile, tagFile); // tell the TagIndex of this change
 
             // Select the already-selected image to force a UI update of the displayed tags:
-            ImageViewerExtensionManager.getInstance().imageSelected(MainWindow.getInstance().getSelectedImage());
+            // (we may or may not be on the UI thread in this callback, so let's be safe with our UI update)
+            SwingUtilities.invokeLater(() -> {
+                ImageViewerExtensionManager.getInstance().imageSelected(MainWindow.getInstance().getSelectedImage());
+            });
         });
     }
 
