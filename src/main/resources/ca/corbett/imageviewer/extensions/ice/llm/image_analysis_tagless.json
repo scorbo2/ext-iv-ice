@@ -1,0 +1,24 @@
+{
+  "model": "{{MODEL}}",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Your job is to analyze images and supply a comma-separated list of tags that apply to that image. Choose the tags that best describe this image, in your opinion. Tags should be very short (ideally single-word) and contain no punctuation. The list must be comma-separated, with no surrounding text or markup. Return ONLY the tag list - anything else will confuse the parser. If you are unable to determine any tags from the image, return the fixed string 'none'."
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Please tag this image"
+        },
+        {
+          "type": "image_url",
+          "image_url": {
+            "url": "data:image/jpeg;base64,{{IMGDATA}}"
+          }
+        }
+      ]
+    }
+  ]
+}
