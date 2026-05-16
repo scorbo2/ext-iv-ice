@@ -22,7 +22,6 @@ import java.util.logging.Logger;
  * Some TODO items, in no particular order:
  * </p>
  * <ul>
- *     <li>Wire this up to the UI reload action so if the user changes LLM config, we pick up the new values.</li>
  *     <li>Right now we're using template json from our jar resources and just search and replacing certain keys
  *         to form the request. This works, but is overly simplistic. We should probably use the openai-java
  *         library instead of forming raw REST requests ourselves.</li>
@@ -94,7 +93,8 @@ public class AiConnectionManager {
         this.jsonTemplateTagless = jsonTemplateTagless;
 
         // We'll load this here in the constructor.
-        // Really, we should wire up to the UIReloadAction so we can refresh it when it's modified...
+        // Our assumption is that this class is instantiated on demand, rather than keeping an instance around.
+        // So, we don't need to wire up to the UIReload mechanism to watch for config changes.
         populateConfig();
     }
 
