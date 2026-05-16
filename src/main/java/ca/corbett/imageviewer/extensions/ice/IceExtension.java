@@ -10,11 +10,14 @@ import ca.corbett.extras.properties.BooleanProperty;
 import ca.corbett.extras.properties.ComboProperty;
 import ca.corbett.extras.properties.IntegerProperty;
 import ca.corbett.extras.properties.KeyStrokeProperty;
+import ca.corbett.extras.properties.LabelProperty;
+import ca.corbett.extras.properties.PasswordProperty;
 import ca.corbett.extras.properties.PropertiesManager;
 import ca.corbett.extras.properties.ShortTextProperty;
 import ca.corbett.imageviewer.AppConfig;
 import ca.corbett.imageviewer.ImageOperation;
 import ca.corbett.imageviewer.extensions.ImageViewerExtension;
+import ca.corbett.imageviewer.extensions.ice.actions.AutoTagAction;
 import ca.corbett.imageviewer.extensions.ice.actions.QuickTagToggleLeftAction;
 import ca.corbett.imageviewer.extensions.ice.actions.QuickTagToggleLeftRightAction;
 import ca.corbett.imageviewer.extensions.ice.actions.QuickTagToggleRightAction;
@@ -28,6 +31,7 @@ import ca.corbett.imageviewer.extensions.ice.actions.TagStatsAction;
 import ca.corbett.imageviewer.extensions.ice.ui.QuickTagPanel;
 import ca.corbett.imageviewer.extensions.ice.ui.TagPreviewPanel;
 import ca.corbett.imageviewer.extensions.ice.ui.formfield.TagHotkeyProperty;
+import ca.corbett.imageviewer.extensions.ice.ui.formfield.UrlValidator;
 import ca.corbett.imageviewer.ui.ImageInstance;
 import ca.corbett.imageviewer.ui.MainWindow;
 import ca.corbett.imageviewer.ui.ThumbPanel;
@@ -42,7 +46,12 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.FlowLayout;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -66,6 +75,8 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
 
     private static final Logger log = Logger.getLogger(IceExtension.class.getName());
 
+    private static final String imageAnalysisJsonLocation = "ca/corbett/imageviewer/extensions/ice/llm/image_analysis.json";
+    private static final String imageAnalysisJsonNoTagsLocation = "ca/corbett/imageviewer/extensions/ice/llm/image_analysis_tagless.json";
     private static final String extInfoLocation = "/ca/corbett/imageviewer/extensions/ice/extInfo.json";
     public static AppExtensionInfo extInfo;
 
@@ -94,13 +105,36 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
     public static final String quickTagShortcutRightProp = QUICK_TAG_TOGGLE + "quickTagPanelRight";
     public static final String quickTagShortcutLeftRightProp = QUICK_TAG_TOGGLE + "quickTagPanelLeftRight";
 
+    public static final String llmIntroLabelProp = "ICE.LLM connection.introLabel";
+    public static final String llmApiKeyProp = "ICE.LLM connection.apiKey";
+    public static final String llmModelProp = "ICE.LLM connection.model";
+    public static final String llmUrlProp = "ICE.LLM connection.url";
+    public static final String llmTagsProp = "ICE.LLM connection.tags";
+    public static final String autoTagKeyProp = "ICE.LLM connection.autoTagHotKey"; // doesn't belong here...
+
     private final List<TagPreviewPanel> tagPreviewPanels = new ArrayList<>();
     private final List<QuickTagPanel> quickTagPanels = new ArrayList<>();
+
+    private String imageAnalysisTemplate = null;
+    private String imageAnalysisTemplateNoTags = null;
 
     public IceExtension() {
         extInfo = AppExtensionInfo.fromExtensionJar(getClass(), extInfoLocation);
         if (extInfo == null) {
             throw new RuntimeException("IceExtension: can't parse extInfo.json!");
+        }
+
+        // Note: we can't do this in loadJarResources() due to a bug in ExtensionManager.
+        //       Turns out loadJarResources() is not invoked until AFTER createConfigProperties().
+        //       This is a problem because we want to pass these templates to our AutoTagAction.
+        //       Submitted [issue 469](https://github.com/scorbo2/swing-extras/issues/469) in swing-extras
+        //       to address this. For now, we have to load everything in our constructor.
+        imageAnalysisTemplate = getTextResource(imageAnalysisJsonLocation);
+        imageAnalysisTemplateNoTags = getTextResource(imageAnalysisJsonNoTagsLocation);
+        if (imageAnalysisTemplate == null) {
+            log.severe("IceExtension: can't load image analysis templates from resource! LLM support is disabled.");
+            imageAnalysisTemplate = null; // null disables this feature
+            imageAnalysisTemplateNoTags = null; // null disables this feature
         }
     }
 
@@ -154,6 +188,39 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
                          .setAllowBlank(true)
                          .setReservedKeyStrokes(AppConfig.RESERVED_KEYSTROKES)
                          .setHelpText("Toggles a QuickTag panel in both left and right positions."));
+
+        // NEW in 3.3.0 - let's add some LLM connection parameters:
+        list.add(new LabelProperty(llmIntroLabelProp, "<html><b>Experimental:</b> you can connect to<br>" +
+                "a local or remote LLM to auto-generate<br>" +
+                "tags for your images.</html>"));
+        ShortTextProperty urlProp = new ShortTextProperty(llmUrlProp, "LLM base URL:", "http://localhost:8080/");
+        urlProp.setHelpText("<html>Must be an OpenAI-compatible server.<br>" +
+                                    "Do not include the /v1/chat/completions part - just the base URL.</html>");
+        urlProp.setAllowBlank(true); // blank means "feature disabled"
+        urlProp.addFormFieldGenerationListener((prop, field) -> {
+            field.addFieldValidator(new UrlValidator());
+        });
+        list.add(urlProp);
+        list.add(new PasswordProperty(llmApiKeyProp, "LLM API key:")
+                         .setAllowBlank(true) // blank mean no key required for this server (or it means 401 denied!)
+                         .setPassword("")
+                         .setHelpText("<html>Your API key for the LLM server.<br>" +
+                                              "Not needed for some servers, like a local LLaMA instance.</html>"));
+        list.add(new ShortTextProperty(llmModelProp, "LLM model name:", "gpt-3.5-turbo")
+                         .setAllowBlank(true) // blank means not needed for this server
+                         .setHelpText("<html>The name of the model to use for tag generation.</html>"));
+        list.add(new ShortTextProperty(llmTagsProp, "LLM tag list:", "")
+                         .setAllowBlank(true) // blank means the LLM will suggest tags without constraints
+                         .setHelpText("<html>Comma-separated list of tags.<br>" +
+                                              "If specified, tag generation will be restricted to just these.<br>" +
+                                              "Leave blank to let the LLM decide (results unpredictable!)</html>"));
+        list.add(new KeyStrokeProperty(autoTagKeyProp, "Auto-tag hotkey:",
+                                       KeyStrokeManager.parseKeyStroke("F9"), // Why F9? I dunno.
+                                       AutoTagAction.getInstance(imageAnalysisTemplate, imageAnalysisTemplateNoTags))
+                         .setAllowBlank(false) // there's no other way to trigger this action currently
+                         .setReservedKeyStrokes(AppConfig.RESERVED_KEYSTROKES)
+                         .setHelpText(
+                                 "<html>Requests auto-tagging of the selected image from the configured LLM.</html>"));
 
         // Add a few configurable hotkeys for commonly-used tags:
         for (int i = 1; i <= 8; i++) {
@@ -510,6 +577,39 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
     public void reloadUI() {
         for (QuickTagPanel panel : quickTagPanels) {
             panel.refreshPreferredWidth(); // user may have changed the preferred quick panel width
+        }
+    }
+
+    /**
+     * Duplicated from swing-extras ResourceLoader class for use in this extension.
+     * The problem is that ResourceLoader attempts to use its own class loader, which
+     * won't work here in this extension, because we are loaded from a jar file
+     * via our own class loader. This use case wasn't considered when ResourceLoader
+     * was written, but it might be a nice feature request for swing-extras to allow
+     * us to specify a class loader to use when loading resources, so we don't
+     * have to do stuff like this.
+     */
+    private String getTextResource(String resourcePath) {
+        if (resourcePath == null) {
+            throw new IllegalArgumentException("Resource path cannot be null");
+        }
+        URL url = getClass().getClassLoader().getResource(resourcePath); // It has to be this.getClass()!
+        if (url == null) {
+            log.severe("Unable to load text resource from path: " + resourcePath);
+            return null;
+        }
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(url.openStream(), StandardCharsets.UTF_8))) {
+            List<String> lines = new ArrayList<>();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                lines.add(line);
+            }
+            return String.join(System.lineSeparator(), lines);
+        }
+        catch (IOException ioe) {
+            log.log(Level.SEVERE, "Caught IOException while loading text resource: " + ioe.getMessage(), ioe);
+            return null;
         }
     }
 }
