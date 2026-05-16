@@ -20,8 +20,8 @@ public class UrlValidator implements FieldValidator<ShortTextField> {
 
     @Override
     public ValidationResult validate(ShortTextField fieldToValidate) {
-        String currentValue = fieldToValidate.getText();
-        if (currentValue.trim().isEmpty()) {
+        String currentValue = fieldToValidate.getText() == null ? "" : fieldToValidate.getText().trim();
+        if (currentValue.isEmpty()) {
             return ValidationResult.valid(); // blank value is fine
         }
         try {
