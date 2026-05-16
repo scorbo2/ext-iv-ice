@@ -2,6 +2,7 @@ package ca.corbett.imageviewer.extensions.ice.llm;
 
 import ca.corbett.extras.progress.SimpleProgressWorker;
 import ca.corbett.imageviewer.extensions.ice.TagList;
+import com.fasterxml.jackson.core.io.SerializedString;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.File;
@@ -123,7 +124,7 @@ public class AiRequestThread extends SimpleProgressWorker {
             }
         }
         finally {
-            // We MUST fire progressComplete, no matter what happened above, or the progress bar will never close:
+            // We MUST fire progressComplete, no matter what happened above, or the progress dialog will never close:
             fireProgressComplete();
         }
     }
@@ -135,10 +136,19 @@ public class AiRequestThread extends SimpleProgressWorker {
     }
 
     private String prepareRequestBody(String model, TagList tags, String base64ImageData) {
+        // Figure out which template we need:
         String template = tags.isEmpty() ? manager.getJsonTemplateTagless() : manager.getJsonTemplate();
+
+        // Handle safe escaping of our String inputs:
+        // (very unlikely, but user could technically have a tag with quotation marks in it)
+        // (note that we don't worry about the base64 image data, since it should already be json-safe)
+        String safeModel = new String(new SerializedString(model).asQuotedChars());
+        String safeTags = new String(new SerializedString(tags.toString()).asQuotedChars());
+
+        // Now we can safely do our string replacement to get the final request body:
         return template
-                .replace(AiConnectionManager.KEY_MODEL, model)
+                .replace(AiConnectionManager.KEY_MODEL, safeModel)
                 .replace(AiConnectionManager.KEY_IMG_DATA, base64ImageData)
-                .replace(AiConnectionManager.KEY_TAGS, tags.toString());
+                .replace(AiConnectionManager.KEY_TAGS, safeTags);
     }
 }
