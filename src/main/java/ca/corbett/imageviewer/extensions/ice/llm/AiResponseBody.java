@@ -1,5 +1,7 @@
 package ca.corbett.imageviewer.extensions.ice.llm;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 /**
  * To make it possible to parse the response json via Jackson,
  * we need to have a class that maps out the expected schema.
@@ -9,13 +11,14 @@ package ca.corbett.imageviewer.extensions.ice.llm;
  * but it's possible that we'll get more than one output object, and/or
  * more than one content object within each output object.
  * <p>
- * <b>NOTE:</b> This is from the responses API. Currently, we're
- * using the older chat completions API. Consider this class for future
- * use. For now, use AiCompletionsBody instead.
+ * <b>NOTE:</b> This is from the newer "responses" API. Currently, we're
+ * still using the older "chat completions" API. Consider this class for future
+ * migration to the newer API. But for now, use AiCompletionsBody instead.
  * </p>
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AiResponseBody {
     private String status;
     private OutputNode[] output;
@@ -63,12 +66,14 @@ public class AiResponseBody {
         return sb.toString();
     }
 
-    private class OutputNode {
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class OutputNode {
         private String type;
         private ContentNode[] content;
     }
 
-    private class ContentNode {
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class ContentNode {
         private String type;
         private String text;
     }

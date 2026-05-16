@@ -13,8 +13,8 @@ import java.util.List;
  * <p>
  * <b>NOTE:</b> the chat completions API is considered old.
  * It's still supported, but the recommendation is to use
- * the newer responses API instead. We have an AiResponseBody
- * class for that, but it's not being used yet.
+ * the newer "responses" API instead. We do have an AiResponseBody
+ * class for that, but it's not being used yet (and has not been tested yet).
  * </p>
  * <p><b>Example response body:</b></p>
  * <pre>
@@ -25,7 +25,7 @@ import java.util.List;
  *           "index":0,
  *           "message": {
  *             "role":"assistant",
- *             "content":"..."
+ *             "content":"tag1,tag2,tag3"
  *           }
  *         }
  *         ]

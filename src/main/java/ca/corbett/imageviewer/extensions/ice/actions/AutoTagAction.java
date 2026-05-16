@@ -86,7 +86,4 @@ public class AutoTagAction extends EnhancedAction {
             });
         });
     }
-
-    private void onComplete(TagList tagList) {
-    }
 }

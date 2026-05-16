@@ -1,5 +1,7 @@
 package ca.corbett.imageviewer.extensions.ice.llm;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 /**
  * If we get anything other than 200 OK, we'll expect an error response body
  * in this format. All we really care about is the code and the error message,
@@ -8,36 +10,53 @@ package ca.corbett.imageviewer.extensions.ice.llm;
  * Example error response body:
  * </p>
  * <pre>
- *     {"error":{"code":400,"message":"Failed to load image or audio file","type":"invalid_request_error"}}
+ * {
+ *   "error": {
+ *     "code": 400,
+ *     "message": "Failed to load image or audio file",
+ *     "type": "invalid_request_error"
+ *   }
+ * }
  * </pre>
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AiErrorBody {
-    private ErrorNode errorNode;
+    private ErrorNode error;
 
+    /**
+     * Returns the numeric error code, if we were able to parse it, otherwise returns -1.
+     */
     public int getCode() {
-        if (errorNode == null) {
+        if (error == null) {
             return -1;
         }
-        return errorNode.code;
+        return error.code;
     }
 
+    /**
+     * Returns the included error text, if we were able to parse it, otherwise returns "Unknown error".
+     */
     public String getMessage() {
-        if (errorNode == null) {
+        if (error == null) {
             return "Unknown error";
         }
-        return errorNode.message;
+        return error.message;
     }
 
+    /**
+     * Returns the supplied error type, if we were able to parse it, otherwise returns "unknown_error".
+     */
     public String getType() {
-        if (errorNode == null) {
+        if (error == null) {
             return "unknown_error";
         }
-        return errorNode.type;
+        return error.type;
     }
 
-    private class ErrorNode {
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class ErrorNode {
         private int code;
         private String message;
         private String type;
