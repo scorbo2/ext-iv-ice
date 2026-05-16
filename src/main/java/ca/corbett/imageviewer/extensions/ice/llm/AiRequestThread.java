@@ -109,7 +109,7 @@ public class AiRequestThread extends SimpleProgressWorker {
                 AiCompletionsBody responseObject = objectMapper.readValue(response.body(), AiCompletionsBody.class);
                 log.info("Auto-tag: received response from LLM: finish_reason=" + responseObject.getFinishReason()
                                  + ", output=" + responseObject.getOutput());
-                TagList results = TagList.of(responseObject.getOutput());
+                TagList results = responseObject.getOutput();
                 if (results.isEmpty()) {
                     log.warning("LLM response did not contain any tags. Returning NO_TAGS.");
                     onComplete.onComplete(noTags());

@@ -1,5 +1,6 @@
 package ca.corbett.imageviewer.extensions.ice.llm;
 
+import ca.corbett.imageviewer.extensions.ice.TagList;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -58,17 +59,20 @@ public class AiCompletionsBody {
      * In the ideal case, we return choices[0].message.content, but we want to be able to handle
      * unexpected output without throwing exceptions.
      */
-    public String getOutput() {
+    public TagList getOutput() {
         if (choices == null || choices.isEmpty()) {
-            return "";
+            TagList badList = new TagList();
+            badList.add(AiConnectionManager.NO_TAGS);
+            return badList;
         }
-        StringBuilder sb = new StringBuilder();
+
+        TagList allTags = new TagList();
         for (ChoiceNode choice : choices) {
             if (choice != null && choice.message != null && choice.message.content != null) {
-                sb.append(choice.message.content);
+                allTags.addAll(TagList.of(choice.message.content));
             }
         }
-        return sb.toString();
+        return allTags;
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
