@@ -62,6 +62,9 @@ public class AutoTagAction extends EnhancedAction {
                                 FilenameUtils.getBaseName(currentImage.getImageFile().getName()) + ".ice");
         TagList originalTags = TagList.fromFile(tagFile); // might be empty; that's okay
 
+        // Create a new AiConnectionManager for this request.
+        // This will query AppConfig for all the latest LLM connection settings,
+        // and validate them before proceeding.
         AiConnectionManager aiManager = new AiConnectionManager(requestTemplate, requestTemplateTagless);
         aiManager.requestAutoTag(imageFile, tagList -> {
             // An "empty" return is one where we got back either a completely empty list,
