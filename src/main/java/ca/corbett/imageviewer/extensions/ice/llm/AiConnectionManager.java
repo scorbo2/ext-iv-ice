@@ -270,10 +270,37 @@ public class AiConnectionManager {
         }
         prop = propsManager.getProperty(IceExtension.llmApiKeyProp);
         if (prop instanceof PasswordProperty apiKeyProp) {
-            llmApiKey = apiKeyProp.getPassword().trim();
+            // Order of precedence for API key: The environment variable always overrides
+            // whatever you specify in props. We only use the value from props if there's
+            // nothing set in the environment. This allows the user to leave the API key
+            // blank in our props entirely. That's good, because we store everything as plain text.
+            // The env var is safer.
+            String apiKeyFromProps = apiKeyProp.getPassword().trim();
+            String apiKeyFromEnv = System.getenv("OPENAI_API_KEY");
+            if (apiKeyFromEnv != null && !apiKeyFromEnv.isBlank()) {
+
+                // Wonky case: if it's set in both locations, and the values don't match,
+                // log a warning, because that's suspicious:
+                if (!apiKeyFromProps.isEmpty() && !apiKeyFromEnv.equals(apiKeyFromProps)) {
+                    log.warning("LLM API key is set in both environment variable and application properties," +
+                                        " but the values do not match! Using the value from the environment variable. " +
+                                        "You may want to check your configuration.");
+                }
+
+                llmApiKey = apiKeyFromEnv;
+            }
+            else {
+                // Fall back to whatever we got from props if it isn't in the env var:
+                llmApiKey = apiKeyFromProps;
+            }
+
+            // If we didn't find one at all, we'll emit a fine log warning:
             if (llmApiKey.isEmpty()) {
-                // This is not necessarily a problem, but we have no way of knowing if the server requires it or not:
-                // Again, we could log this, but it feels noisy. If the user gets a 401, they'll know why.
+                // This is not necessarily a problem, but we have no way of knowing if the server requires it or not.
+                // Again, we could log this at WARNING level, but it feels noisy.
+                // We'll log it at FINE level for anyone who's debugging their config.
+                // (in my testing, the error message usually says "wrong api key", with an error
+                //  type of "authentication_error", so it should be easy to understand what went wrong)
                 log.fine("LLM API key is blank - if authentication is required, requests will fail.");
             }
         }

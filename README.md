@@ -97,7 +97,9 @@ The following configuration can be specified:
   `http://localhost:8080` or `https://my-llm-provider.com`. Don't enter the path information (`v1/chat/completions` for
   example).
 - **LLM API key** - if your LLM provider requires an API key, you can enter it here. If not required, leave blank.
-  Warning: any value you enter here will be saved in plain text in the application properties file!
+  Warning: any value you enter here will be saved in plain text in the application properties file! If you don't want
+  that, you can specify the `OPENAI_API_KEY` environment variable instead, and leave this value blank. The application
+  will get the value to use from the environment.
 - **LLM model name** - the name of the model to use for auto-tagging. Not all servers require this value.
 - **LLM tag list** - an optional list of tags that the LLM will be constrained to choose from. You can leave this blank
   to allow the LLM to decide on its own tags, but be aware that the results may be unpredictable and inconsistent from
