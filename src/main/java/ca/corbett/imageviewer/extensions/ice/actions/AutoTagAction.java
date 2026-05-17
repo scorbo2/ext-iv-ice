@@ -62,6 +62,16 @@ public class AutoTagAction extends EnhancedAction {
         // This will query AppConfig for all the latest LLM connection settings,
         // and validate them before proceeding.
         AiConnectionManager aiManager = new AiConnectionManager(requestTemplate, requestTemplateTagless);
+
+        // Make sure our config is good before proceeding:
+        if (!aiManager.isFeatureEnabled()) {
+            MainWindow.getInstance().showMessageDialog(NAME,
+                                                       "Auto-tag is not available because the LLM connection is not properly configured." +
+                                                               "\nVisit the Auto-tag settings page in application properties to set it up.");
+            return;
+        }
+
+        // Now we can proceed with the request, and we will handle the response in the callback handler:
         CallbackHandler handler = new CallbackHandler(imageFile);
         aiManager.requestAutoTag(imageFile, handler, handler);
     }
