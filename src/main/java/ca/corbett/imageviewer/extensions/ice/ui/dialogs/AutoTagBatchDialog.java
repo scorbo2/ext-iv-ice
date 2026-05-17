@@ -213,7 +213,7 @@ public class AutoTagBatchDialog extends JDialog {
      * A very simple worker to wrap the FileSystemUtil findFiles call, which may take some time
      * if we're in a very large directory. The thread updates our image count label, and also
      * populates the eligibleImages list, which we will use later when we do the batch auto-tagging.
-     * Only one scan can be in progress at a time, as enforced by the isScanInProgress flag.
+     * Only one scan can be in progress at a time, as enforced by the isOperationInProgress flag.
      */
     private class ScanWorker extends SimpleProgressWorker {
 
