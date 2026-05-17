@@ -1,11 +1,13 @@
 package ca.corbett.imageviewer.extensions.ice.actions;
 
 import ca.corbett.extras.EnhancedAction;
+import ca.corbett.extras.TextInputDialog;
 import ca.corbett.imageviewer.extensions.ImageViewerExtensionManager;
 import ca.corbett.imageviewer.extensions.ice.TagIndex;
 import ca.corbett.imageviewer.extensions.ice.TagList;
 import ca.corbett.imageviewer.extensions.ice.llm.AiConnectionManager;
 import ca.corbett.imageviewer.extensions.ice.llm.AiErrorBody;
+import ca.corbett.imageviewer.extensions.ice.ui.formfield.TagListValidator;
 import ca.corbett.imageviewer.ui.ImageInstance;
 import ca.corbett.imageviewer.ui.MainWindow;
 import org.apache.commons.io.FilenameUtils;
@@ -100,16 +102,8 @@ public class AutoTagAction extends EnhancedAction {
                 return;
             }
 
-            // Otherwise, add all the new tags to the original tag list:
-            originalTags.addAll(tagList); // duplicates are pruned automatically, not a big deal.
-            originalTags.save(); // commit changes to disk
-            TagIndex.getInstance().addOrUpdateEntry(imageFile, tagFile); // tell the TagIndex of this change
-
-            // Select the already-selected image to force a UI update of the displayed tags:
-            // (we may or may not be on the UI thread in this callback, so let's be safe with our UI update)
-            SwingUtilities.invokeLater(() -> {
-                ImageViewerExtensionManager.getInstance().imageSelected(MainWindow.getInstance().getSelectedImage());
-            });
+            // Show the suggested tags to the user and allow review/edit:
+            SwingUtilities.invokeLater(() -> reviewAndAccept(tagList));
         }
 
         /**
@@ -128,6 +122,36 @@ public class AutoTagAction extends EnhancedAction {
             SwingUtilities.invokeLater(() -> {
                 MainWindow.getInstance().showMessageDialog(NAME, msg);
             });
+        }
+
+        /**
+         * Make sure this gets invoked on the UI thread!
+         * This method shows dialogs and performs UI updates.
+         */
+        private void reviewAndAccept(TagList suggestedTags) {
+            TextInputDialog dialog = new TextInputDialog(MainWindow.getInstance(),
+                                                         "Suggested tags", TextInputDialog.InputType.MultiLine);
+            dialog.setAllowBlank(false);
+            dialog.setConfirmLabel("Add tags");
+            dialog.addValidator(new TagListValidator());
+            dialog.setPrompt("Suggested tags:");
+            dialog.setInitialText(suggestedTags.toString());
+            dialog.setVisible(true);
+
+            String modifiedTagStr = dialog.getResult();
+            if (modifiedTagStr == null) {
+                // User canceled, so do nothing.
+                return;
+            }
+
+            // Otherwise, add all the new tags to the original tag list:
+            TagList modifiedTags = TagList.of(modifiedTagStr);
+            originalTags.addAll(modifiedTags); // duplicates are pruned automatically, not a big deal.
+            originalTags.save(); // commit changes to disk
+            TagIndex.getInstance().addOrUpdateEntry(imageFile, tagFile); // tell the TagIndex of this change
+
+            // Select the already-selected image to force a UI update of the displayed tags:
+            ImageViewerExtensionManager.getInstance().imageSelected(MainWindow.getInstance().getSelectedImage());
         }
     }
 }
