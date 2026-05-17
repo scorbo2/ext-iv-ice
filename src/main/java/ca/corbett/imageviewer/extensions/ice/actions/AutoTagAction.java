@@ -118,10 +118,12 @@ public class AutoTagAction extends EnhancedAction {
          */
         @Override
         public void onError(AiErrorBody error) {
+            String errorCode = error.getCode() == AiErrorBody.INTERNAL_ERROR ? "(Internal error)" : error.getCode() + "";
+
             // The request thread already logged the error, so we can just show a simple error message to the user.
             String msg = "Failed to auto-tag image: "
                     + "\n\nMessage:" + error.getMessage()
-                    + "\nCode: " + error.getCode()
+                    + "\nCode: " + errorCode
                     + "\nType: " + error.getType();
             SwingUtilities.invokeLater(() -> {
                 MainWindow.getInstance().showMessageDialog(NAME, msg);
