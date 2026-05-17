@@ -97,8 +97,12 @@ public class AutoTagAction extends EnhancedAction {
             boolean isEmpty = tagList.isEmpty()
                     || (tagList.size() == 1 && tagList.getTags().get(0).equals(AiConnectionManager.NO_TAGS));
 
-            // Wonky case: if originalTags isn't empty, and we get back an "empty" list, then do nothing.
-            if (!originalTags.isEmpty() && isEmpty) {
+            // If we get back such a list, let the user know:
+            if (isEmpty) {
+                SwingUtilities.invokeLater(() -> {
+                    MainWindow.getInstance().showMessageDialog(NAME,
+                                                               "The LLM had no tag suggestions for this image.");
+                });
                 return;
             }
 
