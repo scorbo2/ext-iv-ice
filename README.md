@@ -84,10 +84,10 @@ they will not be duplicated.
 
 ### Experimental! Auto-tagging with an LLM
 
-**New in 3.3.0!** - if you have access to any OpenAI-compatible LLM, you can use the new "Auto-tag" feature
-to get the LLM to generate tags for you based on the image content. This is an experimental feature
-and is subject to change! To get started, you'll need to configure your LLM connection details. You
-can do this in the properties dialog, in the `Auto-tag` section. It looks like this:
+**New in 3.3.0!** - if you have access to any OpenAI-compatible LLM with vision/multimodal capabilities,
+you can use the new "Auto-tag" feature to get the LLM to generate tags for you based on the image content.
+This is an experimental feature and is subject to change! To get started, you'll need to configure your
+LLM connection details. You can do this in the properties dialog, in the `Auto-tag` section. It looks like this:
 
 ![Auto-tag configuration](docs/screenshot15.png)
 
@@ -97,6 +97,7 @@ The following configuration can be specified:
   `http://localhost:8080` or `https://my-llm-provider.com`. Don't enter the path information (`v1/chat/completions` for
   example).
 - **LLM API key** - if your LLM provider requires an API key, you can enter it here. If not required, leave blank.
+  Warning: any value you enter here will be saved in plain text in the application properties file!
 - **LLM model name** - the name of the model to use for auto-tagging. Not all servers require this value.
 - **LLM tag list** - an optional list of tags that the LLM will be constrained to choose from. You can leave this blank
   to allow the LLM to decide on its own tags, but be aware that the results may be unpredictable and inconsistent from
@@ -105,7 +106,9 @@ The following configuration can be specified:
   `daytime, nighttime, sunny, rainy, winter, summer, mountains, forest, river`, and so on.
 - **Auto-tag selected** - choose the hotkey that will trigger auto-tag for the currently selected image. Default 'F9'.
 - **Auto-tag batch** - choose the hotkey that will trigger auto-tag for all images in the current directory (with
-  optional recursion). Default 'Ctrl+F9'.
+  optional recursion). Default 'Ctrl+F9'. Warning: unlike single-image auto-tagging, batch auto-tagging writes the
+  returned tags directly to each image's tag file without a review step. If you cancel the operation, or if it fails
+  partway through, any tags already written will remain on disk.
 
 Note that auto-tagging is currently only supported for PNG and JPEG images. Your LLM server may have an upper
 limit on file size and/or number of allowed requests. Be particularly careful with the "batch" option, as the number of
