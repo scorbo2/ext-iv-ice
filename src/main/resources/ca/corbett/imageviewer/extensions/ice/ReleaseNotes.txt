@@ -2,6 +2,7 @@ ext-iv-ice Release Notes
 Author: Steve Corbett
 
 Version 3.3.0 [TODO: release date]
+  #86 - Auto-tag: add support for OPENAI_API_KEY env var
   #83 - Update README for the new auto-tag feature
   #79 - Auto-tag: add suggested tag preview dialog
   #78 - Auto-tag: add batch mode
