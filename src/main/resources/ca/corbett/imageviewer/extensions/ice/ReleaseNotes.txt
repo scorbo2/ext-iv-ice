@@ -3,6 +3,7 @@ Author: Steve Corbett
 
 Version 3.3.0 [TODO: release date]
   #79 - Auto-tag: add suggested tag preview dialog
+  #78 - Auto-tag: add batch mode
   #77 - Auto-tag: improved error handling and reporting
   #73 - add auto-tag support via LLM (highly experimental!)
 

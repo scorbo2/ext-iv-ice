@@ -23,7 +23,7 @@ import java.io.File;
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
 public class AutoTagAction extends EnhancedAction {
-    private static final String NAME = "Auto-tag image";
+    private static final String NAME = "Auto-tag selected image";
 
     private static AutoTagAction instance;
 

@@ -18,6 +18,7 @@ import ca.corbett.imageviewer.AppConfig;
 import ca.corbett.imageviewer.ImageOperation;
 import ca.corbett.imageviewer.extensions.ImageViewerExtension;
 import ca.corbett.imageviewer.extensions.ice.actions.AutoTagAction;
+import ca.corbett.imageviewer.extensions.ice.actions.AutoTagBatchAction;
 import ca.corbett.imageviewer.extensions.ice.actions.QuickTagToggleLeftAction;
 import ca.corbett.imageviewer.extensions.ice.actions.QuickTagToggleLeftRightAction;
 import ca.corbett.imageviewer.extensions.ice.actions.QuickTagToggleRightAction;
@@ -105,12 +106,13 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
     public static final String quickTagShortcutRightProp = QUICK_TAG_TOGGLE + "quickTagPanelRight";
     public static final String quickTagShortcutLeftRightProp = QUICK_TAG_TOGGLE + "quickTagPanelLeftRight";
 
-    public static final String llmIntroLabelProp = "ICE.LLM connection.introLabel";
-    public static final String llmApiKeyProp = "ICE.LLM connection.apiKey";
-    public static final String llmModelProp = "ICE.LLM connection.model";
-    public static final String llmUrlProp = "ICE.LLM connection.url";
-    public static final String llmTagsProp = "ICE.LLM connection.tags";
-    public static final String autoTagKeyProp = "ICE.LLM connection.autoTagHotKey"; // doesn't belong here...
+    public static final String llmIntroLabelProp = "ICE.Auto-tag.introLabel";
+    public static final String llmApiKeyProp = "ICE.Auto-tag.apiKey";
+    public static final String llmModelProp = "ICE.Auto-tag.model";
+    public static final String llmUrlProp = "ICE.Auto-tag.url";
+    public static final String llmTagsProp = "ICE.Auto-tag.tags";
+    public static final String autoTagKeyProp = "ICE.Auto-tag.autoTagHotKey";
+    public static final String autoTagBatchKeyProp = "ICE.Auto-tag.autoTagBatchHotKey";
 
     private final List<TagPreviewPanel> tagPreviewPanels = new ArrayList<>();
     private final List<QuickTagPanel> quickTagPanels = new ArrayList<>();
@@ -214,13 +216,21 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
                          .setHelpText("<html>Comma-separated list of tags.<br>" +
                                               "If specified, tag generation will be restricted to just these.<br>" +
                                               "Leave blank to let the LLM decide (results unpredictable!)</html>"));
-        list.add(new KeyStrokeProperty(autoTagKeyProp, "Auto-tag hotkey:",
+        list.add(new KeyStrokeProperty(autoTagKeyProp, "Auto-tag selected:",
                                        KeyStrokeManager.parseKeyStroke("F9"), // Why F9? I dunno.
                                        AutoTagAction.getInstance(imageAnalysisTemplate, imageAnalysisTemplateNoTags))
                          .setAllowBlank(false) // there's no other way to trigger this action currently
                          .setReservedKeyStrokes(AppConfig.RESERVED_KEYSTROKES)
                          .setHelpText(
                                  "<html>Requests auto-tagging of the selected image from the configured LLM.</html>"));
+        list.add(new KeyStrokeProperty(autoTagBatchKeyProp, "Auto-tag batch:",
+                                       KeyStrokeManager.parseKeyStroke("Ctrl+F9"), // Why Ctrl+F9? I dunno.
+                                       AutoTagBatchAction.getInstance(imageAnalysisTemplate,
+                                                                      imageAnalysisTemplateNoTags))
+                         .setAllowBlank(false) // there's no other way to trigger this action currently
+                         .setReservedKeyStrokes(AppConfig.RESERVED_KEYSTROKES)
+                         .setHelpText("<html>Shows a dialog that allows auto-tagging of all jpeg and/or png images" +
+                                              "<br>in the current directory, with optional recursion.</html>"));
 
         // Add a few configurable hotkeys for commonly-used tags:
         for (int i = 1; i <= 8; i++) {
@@ -354,6 +364,14 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
             if (browseMode == MainWindow.BrowseMode.FILE_SYSTEM) {
                 actions.add(new TagDirStatsAction());
                 actions.add(new RandomImageSetAction());
+            }
+
+            // Auto-tag menu items:
+            actions.add(AutoTagAction.getInstance(imageAnalysisTemplate, imageAnalysisTemplateNoTags));
+            if (browseMode == MainWindow.BrowseMode.FILE_SYSTEM) {
+                // Batch mode only available if we're browsing directories:
+                // (though it would be a neat feature to batch-tag all images in an image set... maybe later)
+                actions.add(AutoTagBatchAction.getInstance(imageAnalysisTemplate, imageAnalysisTemplateNoTags));
             }
         }
 
