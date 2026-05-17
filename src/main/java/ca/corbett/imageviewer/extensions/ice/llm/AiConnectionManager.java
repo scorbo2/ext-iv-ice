@@ -191,10 +191,17 @@ public class AiConnectionManager {
      * If you want to override AppConfig with an empty list, don't pass null!
      * Just pass an empty TagList.
      * </p>
+     * <p>
+     * <b>Note:</b> invoking this method when the feature is disabled does nothing.
+     * </p>
      */
     public void setLlmTags(TagList newTags) {
-        llmTags.clear();
+        // Do nothing if the feature is disabled, or if our tag list was never initialized due to bad config:
+        if (llmTags == null || !featureEnabled) {
+            return;
+        }
 
+        llmTags.clear();
         if (newTags == null) {
             // Reload from AppConfig, if anything is configured there.
             PropertiesManager propsManager = AppConfig.getInstance().getPropertiesManager();
