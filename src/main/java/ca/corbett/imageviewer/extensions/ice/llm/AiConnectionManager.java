@@ -51,6 +51,11 @@ public class AiConnectionManager {
         void onComplete(TagList tagList);
     }
 
+    @FunctionalInterface
+    public interface ErrorCallback {
+        void onError(AiErrorBody error);
+    }
+
     private static final Logger log = Logger.getLogger(AiConnectionManager.class.getName());
 
     private final String jsonTemplate;
@@ -101,16 +106,23 @@ public class AiConnectionManager {
     /**
      * Starts an async request to auto-tag the given image with our configured LLM.
      * Your onComplete callback will receive the resulting TagList when the request is complete.
-     * If the image could not be auto-tagged for any reason, the TagList will have a single
-     * entry with the special NO_TAGS tag. This also applies if the LLM feature is disabled.
-     * The callback may be invoked from the worker thread! Take care to check if you are on
+     * The resulting tag list may contain only the special NO_TAGS tag if the LLM was unable to
+     * determine any tags for the image, or if the feature is disabled.
+     * <p>
+     * If an error occurs, the onError callback will be invoked with an AiErrorBody describing
+     * what went wrong.
+     * </p>
+     * <p>
+     * Both callbacks may be invoked from the worker thread! Take care to check if you are on
      * the UI thread when your callback is invoked, and if not, use SwingUtilities.invokeLater()
      * to switch to the UI thread before making any UI updates.
+     * </p>
      *
      * @param imageFile  The image file to auto-tag. Must not be null. Currently only PNG and JPEG formats are supported.
      * @param onComplete The CompletionCallback to invoke when done. Must not be null.
+     * @param onError   The ErrorCallback to invoke if something goes wrong. Must not be null.
      */
-    public void requestAutoTag(File imageFile, CompletionCallback onComplete) {
+    public void requestAutoTag(File imageFile, CompletionCallback onComplete, ErrorCallback onError) {
         if (imageFile == null) {
             throw new IllegalArgumentException("Image file must not be null");
         }
@@ -122,8 +134,8 @@ public class AiConnectionManager {
             throw new IllegalArgumentException("Unsupported image format for file: " + imageFile.getAbsolutePath()
                                                        + " - only PNG and JPEG are supported");
         }
-        if (onComplete == null) {
-            throw new IllegalArgumentException("Completion callback must not be null");
+        if (onComplete == null || onError == null) {
+            throw new IllegalArgumentException("Completion and error callbacks must not be null");
         }
         if (!featureEnabled) {
             log.warning("LLM auto-tagging requested but feature is disabled - returning NO_TAGS");
@@ -135,7 +147,7 @@ public class AiConnectionManager {
 
         // Fire off a worker thread to do this for us:
         MultiProgressDialog dialog = new MultiProgressDialog(MainWindow.getInstance(), "Auto-tagging image...");
-        AiRequestThread requestThread = new AiRequestThread(imageFile, this, onComplete);
+        AiRequestThread requestThread = new AiRequestThread(imageFile, this, onComplete, onError);
         dialog.runWorker(requestThread, true);
     }
 

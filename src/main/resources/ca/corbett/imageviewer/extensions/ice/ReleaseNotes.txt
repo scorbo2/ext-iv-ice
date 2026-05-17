@@ -2,6 +2,7 @@ ext-iv-ice Release Notes
 Author: Steve Corbett
 
 Version 3.3.0 [TODO: release date]
+  #77 - Auto-tag: improved error handling and reporting
   #73 - add auto-tag support via LLM (highly experimental!)
 
 Version 3.2.0 [2026-04-19]
