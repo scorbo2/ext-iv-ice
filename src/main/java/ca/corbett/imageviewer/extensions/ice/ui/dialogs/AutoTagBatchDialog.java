@@ -322,11 +322,11 @@ public class AutoTagBatchDialog extends JDialog {
                                                                  errorBody -> handleError(imageFile, errorBody));
                     thread.setChatty(false); // quiet, you!
                     thread.run(); // run the request synchronously in this worker thread, so we can track progress and handle errors appropriately
-                }
 
-                // We'll add a slight, 1s delay between requests, to avoid hammering the server.
-                // Would this help avoid rate-limiting errors? Dunno, maybe. Just seems polite though.
-                Thread.sleep(1000);
+                    // We'll add a slight, 1s delay between requests, to avoid hammering the server.
+                    // Would this help avoid rate-limiting errors? Dunno, maybe. Just seems polite though.
+                    Thread.sleep(1000);
+                }
             }
             catch (Exception e) {
                 log.severe("Batch auto-tagging failed: " + e.getMessage());
