@@ -1,5 +1,6 @@
 package ca.corbett.imageviewer.extensions.ice.llm;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
@@ -19,6 +20,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class AiResponseBody {
     private String status;
     private OutputNode[] output;
@@ -67,12 +69,14 @@ public class AiResponseBody {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static class OutputNode {
         private String type;
         private ContentNode[] content;
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static class ContentNode {
         private String type;
         private String text;

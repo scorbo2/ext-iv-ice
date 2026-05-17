@@ -1,6 +1,7 @@
 package ca.corbett.imageviewer.extensions.ice.llm;
 
 import ca.corbett.imageviewer.extensions.ice.TagList;
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -36,6 +37,7 @@ import java.util.List;
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class AiCompletionsBody {
 
     @JsonProperty("choices")
@@ -76,6 +78,7 @@ public class AiCompletionsBody {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static class ChoiceNode {
         @JsonProperty("finish_reason")
         private String finishReason;
@@ -85,6 +88,7 @@ public class AiCompletionsBody {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static class MessageNode {
         @JsonProperty("role")
         private String role; // always "assistant" in our case

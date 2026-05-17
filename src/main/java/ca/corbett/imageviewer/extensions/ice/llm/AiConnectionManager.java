@@ -51,6 +51,11 @@ public class AiConnectionManager {
         void onComplete(TagList tagList);
     }
 
+    @FunctionalInterface
+    public interface ErrorCallback {
+        void onError(AiErrorBody error);
+    }
+
     private static final Logger log = Logger.getLogger(AiConnectionManager.class.getName());
 
     private final String jsonTemplate;
@@ -109,8 +114,9 @@ public class AiConnectionManager {
      *
      * @param imageFile  The image file to auto-tag. Must not be null. Currently only PNG and JPEG formats are supported.
      * @param onComplete The CompletionCallback to invoke when done. Must not be null.
+     * @param onError   The ErrorCallback to invoke if something goes wrong. Must not be null.
      */
-    public void requestAutoTag(File imageFile, CompletionCallback onComplete) {
+    public void requestAutoTag(File imageFile, CompletionCallback onComplete, ErrorCallback onError) {
         if (imageFile == null) {
             throw new IllegalArgumentException("Image file must not be null");
         }
@@ -122,8 +128,8 @@ public class AiConnectionManager {
             throw new IllegalArgumentException("Unsupported image format for file: " + imageFile.getAbsolutePath()
                                                        + " - only PNG and JPEG are supported");
         }
-        if (onComplete == null) {
-            throw new IllegalArgumentException("Completion callback must not be null");
+        if (onComplete == null || onError == null) {
+            throw new IllegalArgumentException("Completion and error callbacks must not be null");
         }
         if (!featureEnabled) {
             log.warning("LLM auto-tagging requested but feature is disabled - returning NO_TAGS");
@@ -135,7 +141,7 @@ public class AiConnectionManager {
 
         // Fire off a worker thread to do this for us:
         MultiProgressDialog dialog = new MultiProgressDialog(MainWindow.getInstance(), "Auto-tagging image...");
-        AiRequestThread requestThread = new AiRequestThread(imageFile, this, onComplete);
+        AiRequestThread requestThread = new AiRequestThread(imageFile, this, onComplete, onError);
         dialog.runWorker(requestThread, true);
     }
 

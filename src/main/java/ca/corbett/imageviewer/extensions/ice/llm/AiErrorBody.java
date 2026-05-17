@@ -1,5 +1,6 @@
 package ca.corbett.imageviewer.extensions.ice.llm;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
@@ -22,15 +23,45 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class AiErrorBody {
     private ErrorNode error;
+
+    /**
+     * "Internal" here does not refer to 500 Internal Server Error, but rather
+     * to any error that occurs within this extension, including when we
+     * are unable to parse the error response body from the LLM.
+     */
+    public static final int INTERNAL_ERROR = -1;
+
+    /**
+     * Static convenience method to create an AiErrorBody from the given code, error type, and message.
+     * The errorCode in that case will be INTERNAL_ERROR.
+     */
+    public static AiErrorBody of(String errorType, String message) {
+        return of(INTERNAL_ERROR, errorType, message);
+    }
+
+    /**
+     * If you actually have an error code, you can use this method to create an AiErrorBody with that code,
+     * along with the error type and message.
+     */
+    public static AiErrorBody of(int errorCode, String errorType, String message) {
+        AiErrorBody body = new AiErrorBody();
+        ErrorNode errorNode = new ErrorNode();
+        errorNode.code = errorCode;
+        errorNode.type = errorType;
+        errorNode.message = message;
+        body.error = errorNode;
+        return body;
+    }
 
     /**
      * Returns the numeric error code, if we were able to parse it, otherwise returns -1.
      */
     public int getCode() {
         if (error == null) {
-            return -1;
+            return INTERNAL_ERROR;
         }
         return error.code;
     }
@@ -56,6 +87,7 @@ public class AiErrorBody {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static class ErrorNode {
         private int code;
         private String message;

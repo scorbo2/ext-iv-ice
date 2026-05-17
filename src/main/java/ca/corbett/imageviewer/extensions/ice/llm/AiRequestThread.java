@@ -12,6 +12,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.util.Base64;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -34,10 +35,15 @@ public class AiRequestThread extends SimpleProgressWorker {
     private final File imageFile;
     private final AiConnectionManager manager;
     private final AiConnectionManager.CompletionCallback onComplete;
+    private final AiConnectionManager.ErrorCallback onError;
 
-    public AiRequestThread(File imageFile, AiConnectionManager manager, AiConnectionManager.CompletionCallback onComplete) {
+    public AiRequestThread(File imageFile,
+                           AiConnectionManager manager,
+                           AiConnectionManager.CompletionCallback onComplete,
+                           AiConnectionManager.ErrorCallback onError) {
         this.manager = manager;
         this.onComplete = onComplete;
+        this.onError = onError;
         this.imageFile = imageFile;
     }
 
@@ -64,7 +70,8 @@ public class AiRequestThread extends SimpleProgressWorker {
             }
             catch (Exception e) {
                 log.severe("Failed to read and encode image file: " + e.getMessage());
-                onComplete.onComplete(noTags());
+                onError.onError(AiErrorBody.of(e.getClass().getName(),
+                                               "Failed to read and encode image file: " + e.getMessage()));
                 return;
             }
 
@@ -94,14 +101,17 @@ public class AiRequestThread extends SimpleProgressWorker {
                         log.severe("LLM request failed with status code " + response.statusCode() + ": "
                                            + errorBody.getMessage() + " (code " + errorBody.getCode() + ", type "
                                            + errorBody.getType() + ")");
+                        onError.onError(errorBody);
                     }
                     catch (Exception e) {
                         // We were unable to parse it, so best we can do is show the generic error code:
                         // (we *could* log the response body, but it might be huge, and it might leak
                         //  server info into the log, so we'll just let it go)
                         log.severe("LLM request failed with status code " + response.statusCode());
+                        onError.onError(AiErrorBody.of(response.statusCode(),
+                                                       "HTTP error",
+                                                       "LLM request failed with status code " + response.statusCode()));
                     }
-                    onComplete.onComplete(noTags());
                     return;
                 }
 
@@ -119,8 +129,9 @@ public class AiRequestThread extends SimpleProgressWorker {
                 }
             }
             catch (Exception e) {
-                log.severe("Failed to send LLM request or parse response: " + e.getMessage());
-                onComplete.onComplete(noTags());
+                log.log(Level.SEVERE, "Failed to send LLM request or parse response: " + e.getMessage(), e);
+                onError.onError(AiErrorBody.of(e.getClass().getName(),
+                                               "Failed to send LLM request or parse response: " + e.getMessage()));
             }
         }
         finally {

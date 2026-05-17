@@ -5,6 +5,7 @@ import ca.corbett.imageviewer.extensions.ImageViewerExtensionManager;
 import ca.corbett.imageviewer.extensions.ice.TagIndex;
 import ca.corbett.imageviewer.extensions.ice.TagList;
 import ca.corbett.imageviewer.extensions.ice.llm.AiConnectionManager;
+import ca.corbett.imageviewer.extensions.ice.llm.AiErrorBody;
 import ca.corbett.imageviewer.ui.ImageInstance;
 import ca.corbett.imageviewer.ui.MainWindow;
 import org.apache.commons.io.FilenameUtils;
@@ -55,18 +56,40 @@ public class AutoTagAction extends EnhancedAction {
             return;
         }
 
-        // Find the tag file for this image.
-        // It's not an error if this file does not exist...
-        // We'll just end up creating it if/when we get the results from the LLM.
-        File tagFile = new File(currentImage.getImageFile().getParentFile(),
-                                FilenameUtils.getBaseName(currentImage.getImageFile().getName()) + ".ice");
-        TagList originalTags = TagList.fromFile(tagFile); // might be empty; that's okay
-
         // Create a new AiConnectionManager for this request.
         // This will query AppConfig for all the latest LLM connection settings,
         // and validate them before proceeding.
         AiConnectionManager aiManager = new AiConnectionManager(requestTemplate, requestTemplateTagless);
-        aiManager.requestAutoTag(imageFile, tagList -> {
+        CallbackHandler handler = new CallbackHandler(imageFile);
+        aiManager.requestAutoTag(imageFile, handler, handler);
+    }
+
+    /**
+     * Invoked when we get a response back from the LLM, whether it's a success or an error.
+     */
+    private static class CallbackHandler
+            implements AiConnectionManager.CompletionCallback, AiConnectionManager.ErrorCallback {
+        private final File imageFile;
+        private final File tagFile;
+        private final TagList originalTags;
+
+        public CallbackHandler(File imageFile) {
+            this.imageFile = imageFile;
+
+            // Find the tag file for this image.
+            // It's not an error if this file does not exist...
+            // We'll just end up creating it if/when we get the results from the LLM.
+            this.tagFile = new File(imageFile.getParentFile(), FilenameUtils.getBaseName(imageFile.getName()) + ".ice");
+            this.originalTags = TagList.fromFile(tagFile); // might be empty; that's okay
+        }
+
+        /**
+         * This will be called when we get a successful response from the LLM.
+         * The tags parameter will contain the list of tags returned by the LLM, which may be empty.
+         * We will need to merge these tags with the existing tags for the image, and then update the UI accordingly.
+         */
+        @Override
+        public void onComplete(TagList tagList) {
             // An "empty" return is one where we got back either a completely empty list,
             // or a list with just the NO_TAG sentinel value.
             boolean isEmpty = tagList.isEmpty()
@@ -87,6 +110,22 @@ public class AutoTagAction extends EnhancedAction {
             SwingUtilities.invokeLater(() -> {
                 ImageViewerExtensionManager.getInstance().imageSelected(MainWindow.getInstance().getSelectedImage());
             });
-        });
+        }
+
+        /**
+         * This will be called if there was an error sending the request or parsing the response.
+         * The error parameter will contain details about what went wrong, which we can display to the user.
+         */
+        @Override
+        public void onError(AiErrorBody error) {
+            // The request thread already logged the error, so we can just show a simple error message to the user.
+            String msg = "Failed to auto-tag image: "
+                    + "\n\nMessage:" + error.getMessage()
+                    + "\nCode: " + error.getCode()
+                    + "\nType: " + error.getType();
+            SwingUtilities.invokeLater(() -> {
+                MainWindow.getInstance().showMessageDialog(NAME, msg);
+            });
+        }
     }
 }
