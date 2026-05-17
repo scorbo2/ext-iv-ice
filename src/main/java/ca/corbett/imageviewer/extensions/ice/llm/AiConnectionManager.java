@@ -25,10 +25,6 @@ import java.util.logging.Logger;
  *     <li>Right now we're using template json from our jar resources and just search and replacing certain keys
  *         to form the request. This works, but is overly simplistic. We should probably use the openai-java
  *         library instead of forming raw REST requests ourselves.</li>
- *     <li>Currently, you can only request an auto-tag for the selected image. It would be great to
- *         have a "batch mode", where it goes through all images in a directory, with optional recursion.</li>
- *     <li>Currently, the auto-tag can only be triggered from a configurable keyboard shortcut. It would be
- *         nice to have a menu item or toolbar button or right-click popup option or something.</li>
  * </ul>
  * <p>
  *     The above TODOs will be handled in future tickets, if the initial proof-of-concept works out.
@@ -58,6 +54,7 @@ public class AiConnectionManager {
     private String llmModel;
     private String llmApiKey;
     private TagList llmTags;
+    private final boolean warnUnrestricted;
 
     /**
      * If the LLM is unable to determine tags for some reason (the image is unclear, the given tag
@@ -69,6 +66,10 @@ public class AiConnectionManager {
     public static final String KEY_MODEL = "{{MODEL}}";
     public static final String KEY_IMG_DATA = "{{IMGDATA}}";
     public static final String KEY_TAGS = "{{TAGS}}";
+
+    public AiConnectionManager(String jsonTemplate, String jsonTemplateTagless) {
+        this(jsonTemplate, jsonTemplateTagless, true);
+    }
 
     /**
      * The two json template strings must be supplied here (they do not change dynamically).
@@ -85,15 +86,27 @@ public class AiConnectionManager {
      *
      * @param jsonTemplate        The json template for a tag-constrained analysis request. If blank, the feature is disabled.
      * @param jsonTemplateTagless The json template for a tagless analysis request. If blank, the feature is disabled.
+     * @param warnUnrestricted    Emits a log warning if no tag restrictions are set in application properties.
      */
-    public AiConnectionManager(String jsonTemplate, String jsonTemplateTagless) {
+    public AiConnectionManager(String jsonTemplate, String jsonTemplateTagless, boolean warnUnrestricted) {
         this.jsonTemplate = jsonTemplate;
         this.jsonTemplateTagless = jsonTemplateTagless;
+        this.warnUnrestricted = warnUnrestricted;
 
         // We'll load this here in the constructor.
         // Our assumption is that this class is instantiated on demand, rather than keeping an instance around.
         // So, we don't need to wire up to the UIReload mechanism to watch for config changes.
         populateConfig();
+    }
+
+    /**
+     * Reports whether we have good configuration to make LLM requests.
+     * This does not guarantee that the LLM is reachable! We don't actually validate the
+     * connection until request time. This method simply checks our config to make sure
+     * we have what we need to attempt a connection.
+     */
+    public boolean isFeatureEnabled() {
+        return featureEnabled;
     }
 
     /**
@@ -169,6 +182,40 @@ public class AiConnectionManager {
     }
 
     /**
+     * By default, this manager will load the restricted tag list from AppConfig.
+     * But you can override it, if you have your own restriction list.
+     * Be sure the user is aware of this! Otherwise it may be confusing why
+     * the restriction list in application properties is being ignored.
+     * <p>
+     * null is a special value here - it means "reload whatever is in AppConfig".
+     * If you want to override AppConfig with an empty list, don't pass null!
+     * Just pass an empty TagList.
+     * </p>
+     * <p>
+     * <b>Note:</b> invoking this method when the feature is disabled does nothing.
+     * </p>
+     */
+    public void setLlmTags(TagList newTags) {
+        // Do nothing if the feature is disabled, or if our tag list was never initialized due to bad config:
+        if (llmTags == null || !featureEnabled) {
+            return;
+        }
+
+        llmTags.clear();
+        if (newTags == null) {
+            // Reload from AppConfig, if anything is configured there.
+            PropertiesManager propsManager = AppConfig.getInstance().getPropertiesManager();
+            AbstractProperty prop = propsManager.getProperty(IceExtension.llmTagsProp);
+            if (prop instanceof ShortTextProperty tagsProp) {
+                llmTags.addAll(TagList.of(tagsProp.getValue()));
+            }
+        }
+        else {
+            llmTags.addAll(newTags);
+        }
+    }
+
+    /**
      * Grabs our config from AppConfig and validates it.
      * This will set featureEnabled to false if our config is invalid.
      */
@@ -237,7 +284,7 @@ public class AiConnectionManager {
         prop = propsManager.getProperty(IceExtension.llmTagsProp);
         if (prop instanceof ShortTextProperty tagsProp) {
             llmTags = TagList.of(tagsProp.getValue()); // TagList can parse this for us
-            if (llmTags.isEmpty()) {
+            if (llmTags.isEmpty() && warnUnrestricted) {
                 // This may result in very unexpected behavior. Perhaps the user is unaware of the consequences here:
                 log.warning("LLM tags list is empty - the LLM will be free to choose any tags it wants!" +
                                     " This may result in unpredictable or inconsistent tags being chosen. " +

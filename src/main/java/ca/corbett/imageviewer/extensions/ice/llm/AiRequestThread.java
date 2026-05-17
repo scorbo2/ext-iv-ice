@@ -36,6 +36,7 @@ public class AiRequestThread extends SimpleProgressWorker {
     private final AiConnectionManager manager;
     private final AiConnectionManager.CompletionCallback onComplete;
     private final AiConnectionManager.ErrorCallback onError;
+    private boolean chatty;
 
     public AiRequestThread(File imageFile,
                            AiConnectionManager manager,
@@ -45,6 +46,22 @@ public class AiRequestThread extends SimpleProgressWorker {
         this.onComplete = onComplete;
         this.onError = onError;
         this.imageFile = imageFile;
+        chatty = true;
+    }
+
+    /**
+     * Reports whether this thread will emit log messages during request execution.
+     */
+    public boolean isChatty() {
+        return chatty;
+    }
+
+    /**
+     * By default, this thread will log success/failure messages regarding the request.
+     * If you plan to do your own logging, you can tell this thread to be quiet by setting chatty to false.
+     */
+    public void setChatty(boolean chatty) {
+        this.chatty = chatty;
     }
 
     @Override
@@ -98,16 +115,20 @@ public class AiRequestThread extends SimpleProgressWorker {
                     try {
                         // We can try to parse out what happened:
                         AiErrorBody errorBody = objectMapper.readValue(response.body(), AiErrorBody.class);
-                        log.severe("LLM request failed with status code " + response.statusCode() + ": "
-                                           + errorBody.getMessage() + " (code " + errorBody.getCode() + ", type "
-                                           + errorBody.getType() + ")");
+                        if (chatty) {
+                            log.severe("LLM request failed with status code " + response.statusCode() + ": "
+                                               + errorBody.getMessage() + " (code " + errorBody.getCode() + ", type "
+                                               + errorBody.getType() + ")");
+                        }
                         onError.onError(errorBody);
                     }
                     catch (Exception e) {
                         // We were unable to parse it, so best we can do is show the generic error code:
                         // (we *could* log the response body, but it might be huge, and it might leak
                         //  server info into the log, so we'll just let it go)
-                        log.severe("LLM request failed with status code " + response.statusCode());
+                        if (chatty) {
+                            log.severe("LLM request failed with status code " + response.statusCode());
+                        }
                         onError.onError(AiErrorBody.of(response.statusCode(),
                                                        "HTTP error",
                                                        "LLM request failed with status code " + response.statusCode()));
@@ -117,11 +138,15 @@ public class AiRequestThread extends SimpleProgressWorker {
 
                 // We'll use Jackson to parse the json response:
                 AiCompletionsBody responseObject = objectMapper.readValue(response.body(), AiCompletionsBody.class);
-                log.info("Auto-tag: received response from LLM: finish_reason=" + responseObject.getFinishReason()
-                                 + ", output=" + responseObject.getOutput());
+                if (chatty) {
+                    log.info("Auto-tag: received response from LLM: finish_reason=" + responseObject.getFinishReason()
+                                     + ", output=" + responseObject.getOutput());
+                }
                 TagList results = responseObject.getOutput();
                 if (results.isEmpty()) {
-                    log.warning("LLM response did not contain any tags. Returning NO_TAGS.");
+                    if (chatty) {
+                        log.warning("LLM response did not contain any tags. Returning NO_TAGS.");
+                    }
                     onComplete.onComplete(noTags());
                 }
                 else {
@@ -129,7 +154,9 @@ public class AiRequestThread extends SimpleProgressWorker {
                 }
             }
             catch (Exception e) {
-                log.log(Level.SEVERE, "Failed to send LLM request or parse response: " + e.getMessage(), e);
+                if (chatty) {
+                    log.log(Level.SEVERE, "Failed to send LLM request or parse response: " + e.getMessage(), e);
+                }
                 onError.onError(AiErrorBody.of(e.getClass().getName(),
                                                "Failed to send LLM request or parse response: " + e.getMessage()));
             }
