@@ -187,7 +187,7 @@ public class AiConnectionManager {
      * Be sure the user is aware of this! Otherwise it may be confusing why
      * the restriction list in application properties is being ignored.
      * <p>
-     * null is a special value here - it mean "reload whatever is in AppConfig".
+     * null is a special value here - it means "reload whatever is in AppConfig".
      * If you want to override AppConfig with an empty list, don't pass null!
      * Just pass an empty TagList.
      * </p>
