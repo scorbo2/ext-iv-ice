@@ -106,11 +106,17 @@ public class AiConnectionManager {
     /**
      * Starts an async request to auto-tag the given image with our configured LLM.
      * Your onComplete callback will receive the resulting TagList when the request is complete.
-     * If the image could not be auto-tagged for any reason, the TagList will have a single
-     * entry with the special NO_TAGS tag. This also applies if the LLM feature is disabled.
-     * The callback may be invoked from the worker thread! Take care to check if you are on
+     * The resulting tag list may contain only the special NO_TAGS tag if the LLM was unable to
+     * determine any tags for the image, or if the feature is disabled.
+     * <p>
+     * If an error occurs, the onError callback will be invoked with an AiErrorBody describing
+     * what went wrong.
+     * </p>
+     * <p>
+     * Both callbacks may be invoked from the worker thread! Take care to check if you are on
      * the UI thread when your callback is invoked, and if not, use SwingUtilities.invokeLater()
      * to switch to the UI thread before making any UI updates.
+     * </p>
      *
      * @param imageFile  The image file to auto-tag. Must not be null. Currently only PNG and JPEG formats are supported.
      * @param onComplete The CompletionCallback to invoke when done. Must not be null.
