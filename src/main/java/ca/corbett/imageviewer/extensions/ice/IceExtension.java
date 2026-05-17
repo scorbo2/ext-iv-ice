@@ -219,7 +219,7 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
         list.add(new KeyStrokeProperty(autoTagKeyProp, "Auto-tag selected:",
                                        KeyStrokeManager.parseKeyStroke("F9"), // Why F9? I dunno.
                                        AutoTagAction.getInstance(imageAnalysisTemplate, imageAnalysisTemplateNoTags))
-                         .setAllowBlank(false) // there's no other way to trigger this action currently
+                         .setAllowBlank(true)
                          .setReservedKeyStrokes(AppConfig.RESERVED_KEYSTROKES)
                          .setHelpText(
                                  "<html>Requests auto-tagging of the selected image from the configured LLM.</html>"));
@@ -227,7 +227,7 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
                                        KeyStrokeManager.parseKeyStroke("Ctrl+F9"), // Why Ctrl+F9? I dunno.
                                        AutoTagBatchAction.getInstance(imageAnalysisTemplate,
                                                                       imageAnalysisTemplateNoTags))
-                         .setAllowBlank(false) // there's no other way to trigger this action currently
+                         .setAllowBlank(true)
                          .setReservedKeyStrokes(AppConfig.RESERVED_KEYSTROKES)
                          .setHelpText("<html>Shows a dialog that allows auto-tagging of all jpeg and/or png images" +
                                               "<br>in the current directory, with optional recursion.</html>"));
