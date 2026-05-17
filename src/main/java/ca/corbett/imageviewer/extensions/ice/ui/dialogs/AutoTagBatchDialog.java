@@ -63,6 +63,7 @@ public class AutoTagBatchDialog extends JDialog {
     private final List<File> eligibleImages = new ArrayList<>();
     private final CheckBoxField recursiveField;
     private final LabelField imageCountLabel;
+    private final CheckBoxField useConfigRestrictionField;
     private final ShortTextField tagRestrictionField;
     private boolean isOperationInProgress;
 
@@ -75,14 +76,19 @@ public class AutoTagBatchDialog extends JDialog {
         imageCountLabel = new LabelField("Image count:", "0");
         imageCountLabel.setHelpText("Note: Only JPEG and PNG images are counted here.");
         tagRestrictionField = new ShortTextField("Tag restriction", 20);
-        tagRestrictionField.setHelpText("<html>Optional: restrict the LLM to only these tags." +
+        tagRestrictionField.setHelpText("<html>Restrict the LLM to only these tags." +
                                                 "<br>If blank, the LLM is free to decide which tags to use.</html>");
+        tagRestrictionField.setEnabled(false);
         tagRestrictionField.setText(getRestrictionList());
+        useConfigRestrictionField = new CheckBoxField("Use tag restrictions from configuration", true);
+        useConfigRestrictionField.addValueChangedListener(
+                e -> tagRestrictionField.setEnabled(!useConfigRestrictionField.isChecked()));
         FormPanel formPanel = new FormPanel(Alignment.TOP_LEFT);
         formPanel.setBorderMargin(16);
         formPanel.add(List.of(
                 recursiveField,
                 imageCountLabel,
+                useConfigRestrictionField,
                 tagRestrictionField
         ));
 
@@ -145,15 +151,13 @@ public class AutoTagBatchDialog extends JDialog {
         }
 
         // Override the tag restriction list if the user has given us a custom value here:
-        TagList customRestrictionList = TagList.of(tagRestrictionField.getText());
-        if (customRestrictionList.isEmpty()) {
-            aiManager.setLlmTags(null); // null means "use whatever is in AppConfig"
+        TagList restrictionTags = TagList.of(getRestrictionList()); // might be empty
+        if (!useConfigRestrictionField.isChecked()) {
+            restrictionTags = TagList.of(tagRestrictionField.getText()); // might be empty
         }
-        else {
-            aiManager.setLlmTags(customRestrictionList);
-        }
+        aiManager.setLlmTags(restrictionTags); // okay if empty - LLM will choose tags
 
-        // Emit a log warning if there are no tag restrictions (either in AppConfig or here)
+        // Emit a log warning if there are no tag restrictions:
         if (aiManager.getLlmTags().isEmpty()) {
             // This may result in very unexpected behavior. Perhaps the user is unaware of the consequences here:
             log.warning("LLM tags list is empty - the LLM will be free to choose any tags it wants!" +
