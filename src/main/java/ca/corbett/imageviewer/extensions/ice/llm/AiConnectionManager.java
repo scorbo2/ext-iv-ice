@@ -8,6 +8,7 @@ import ca.corbett.extras.properties.ShortTextProperty;
 import ca.corbett.imageviewer.AppConfig;
 import ca.corbett.imageviewer.extensions.ice.IceExtension;
 import ca.corbett.imageviewer.extensions.ice.TagList;
+import ca.corbett.imageviewer.extensions.ice.ui.formfield.UrlValidator;
 import ca.corbett.imageviewer.ui.MainWindow;
 
 import java.io.File;
@@ -241,6 +242,10 @@ public class AiConnectionManager {
                 String urlString = urlProp.getValue();
                 if (urlString == null || urlString.isBlank()) {
                     log.warning("LLM URL is blank - LLM feature is disabled :(");
+                    return;
+                }
+                if (!UrlValidator.isValidUrl(urlString)) {
+                    log.severe("LLM URL is not a valid URL: " + urlString + " - disabling LLM feature");
                     return;
                 }
                 llmUrl = new URL(urlString.trim()); // this gives us the base url, example http://localhost:8080

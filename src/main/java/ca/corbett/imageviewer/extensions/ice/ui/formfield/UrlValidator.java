@@ -24,12 +24,29 @@ public class UrlValidator implements FieldValidator<ShortTextField> {
         if (currentValue.isEmpty()) {
             return ValidationResult.valid(); // blank value is fine
         }
+
+        return isValidUrl(currentValue) ? ValidationResult.valid() : ValidationResult.invalid(MESSAGE);
+    }
+
+    /**
+     * A public convenience method for validating URLs.
+     * A "valid" URL for our purpose is one that:
+     * <ol>
+     *     <li>Can be parsed by the java.net.URL class without throwing a MalformedURLException</li>
+     *     <li>Is either HTTP or HTTPS, as those are the only protocols accepted by OpenAI-compatible servers.</li>
+     * </ol>
+     *
+     * @param url A URL in string form.
+     * @return true if both of the above mentioned conditions are met.
+     */
+    public static boolean isValidUrl(String url) {
         try {
-            new URL(currentValue);
-            return ValidationResult.valid();
+            URL actualUrl = new URL(url);
+            return actualUrl.getProtocol().equalsIgnoreCase("http")
+                    || actualUrl.getProtocol().equalsIgnoreCase("https");
         }
         catch (MalformedURLException ignored) {
-            return ValidationResult.invalid(MESSAGE);
+            return false;
         }
     }
 }

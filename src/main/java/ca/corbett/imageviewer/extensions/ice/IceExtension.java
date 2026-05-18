@@ -133,8 +133,16 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
         //       to address this. For now, we have to load everything in our constructor.
         imageAnalysisTemplate = getTextResource(imageAnalysisJsonLocation);
         imageAnalysisTemplateNoTags = getTextResource(imageAnalysisJsonNoTagsLocation);
-        if (imageAnalysisTemplate == null) {
-            log.severe("IceExtension: can't load image analysis templates from resource! LLM support is disabled.");
+        if (imageAnalysisTemplate == null || imageAnalysisTemplateNoTags == null) {
+            if (imageAnalysisTemplate == null) {
+                log.severe("IceExtension: can't load image analysis template from resource '"
+                                   + imageAnalysisJsonLocation + "'.");
+            }
+            if (imageAnalysisTemplateNoTags == null) {
+                log.severe("IceExtension: can't load image analysis template from resource '"
+                                   + imageAnalysisJsonNoTagsLocation + "'.");
+            }
+            log.severe("IceExtension: LLM support is disabled.");
             imageAnalysisTemplate = null; // null disables this feature
             imageAnalysisTemplateNoTags = null; // null disables this feature
         }

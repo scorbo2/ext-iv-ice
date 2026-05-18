@@ -30,9 +30,12 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Frame;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
 /**
@@ -66,11 +69,13 @@ public class AutoTagBatchDialog extends JDialog {
     private final CheckBoxField useConfigRestrictionField;
     private final ShortTextField tagRestrictionField;
     private boolean isOperationInProgress;
+    private BatchWorker batchWorker;
 
     public AutoTagBatchDialog(Frame owner, File dir, AiConnectionManager aiManager) {
         super(owner, NAME, true);
         this.dir = dir;
         this.aiManager = aiManager;
+        batchWorker = null;
         recursiveField = new CheckBoxField("Include subdirectories", true);
         recursiveField.addValueChangedListener(e -> rescan());
         imageCountLabel = new LabelField("Image count:", "0");
@@ -100,6 +105,15 @@ public class AutoTagBatchDialog extends JDialog {
         setResizable(false);
         setLocationRelativeTo(owner);
         setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+
+        // The user can hit the "X" on the dialog to close us, even if an operation is in progress.
+        // That's a bit rude, but we can respond by canceling the operation in progress on their behalf.
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                cancelIfRunning();
+            }
+        });
 
         // Force an immediate rescan to populate the image count:
         rescan();
@@ -170,7 +184,8 @@ public class AutoTagBatchDialog extends JDialog {
 
         // Fire off a BatchWorker:
         MultiProgressDialog progressDialog = new MultiProgressDialog(this, "Auto-tagging images...");
-        progressDialog.runWorker(new BatchWorker(eligibleImages), true);
+        batchWorker = new BatchWorker(eligibleImages);
+        progressDialog.runWorker(batchWorker, true);
     }
 
     /**
@@ -203,10 +218,27 @@ public class AutoTagBatchDialog extends JDialog {
 
         button = new JButton("Cancel");
         button.setPreferredSize(new Dimension(100, 25));
-        button.addActionListener(e -> dispose());
+        button.addActionListener(e -> {
+            cancelIfRunning();
+            dispose();
+        });
         buttonPanel.add(button);
 
         return buttonPanel;
+    }
+
+    /**
+     * Invoked from the dialog close path, and also from the Cancel button.
+     * Will check to see if a batch job is in progress, and cancel it if so.
+     */
+    private void cancelIfRunning() {
+        if (batchWorker != null) {
+            log.info("Batch dialog closing with operation in progress! Canceling the operation.");
+            batchWorker.cancel();
+
+            // We only want to do this once:
+            batchWorker = null;
+        }
     }
 
     /**
@@ -229,7 +261,7 @@ public class AutoTagBatchDialog extends JDialog {
         public void run() {
             fireProgressBegins(2);
             try {
-                fireProgressUpdate(1, "Scanning for images...");
+                fireProgressUpdate(0, "Scanning for images...");
                 List<File> images = FileSystemUtil.findFiles(dir, isRecursive, List.of("jpg", "jpeg", "png"));
 
                 SwingUtilities.invokeLater(() -> imageCountLabel.setText(String.valueOf(images.size())));
@@ -256,10 +288,16 @@ public class AutoTagBatchDialog extends JDialog {
     private class BatchWorker extends SimpleProgressWorker {
 
         private final List<File> imagesToProcess;
+        private final AtomicBoolean isCanceled;
 
         public BatchWorker(List<File> imagesToProcess) {
             // Make a copy of the list to avoid concurrency issues:
             this.imagesToProcess = new ArrayList<>(imagesToProcess);
+            isCanceled = new AtomicBoolean(false);
+        }
+
+        public void cancel() {
+            isCanceled.set(true);
         }
 
         private void handleResult(File imageFile, TagList tagList) {
@@ -309,9 +347,10 @@ public class AutoTagBatchDialog extends JDialog {
         public void run() {
             fireProgressBegins(imagesToProcess.size());
             int step = 0;
+            boolean completedSuccessfully = false;
             try {
                 for (File imageFile : imagesToProcess) {
-                    if (!fireProgressUpdate(step++, imageFile.getAbsolutePath())) {
+                    if (!fireProgressUpdate(step++, imageFile.getAbsolutePath()) || isCanceled.get()) {
                         log.info("Batch auto-tagging cancelled by user.");
                         break;
                     }
@@ -327,16 +366,23 @@ public class AutoTagBatchDialog extends JDialog {
                     // Would this help avoid rate-limiting errors? Dunno, maybe. Just seems polite though.
                     Thread.sleep(1000);
                 }
+
+                completedSuccessfully = true;
             }
             catch (Exception e) {
                 log.severe("Batch auto-tagging failed: " + e.getMessage());
                 // The error has already been handled in the handleError method, so we don't need to do anything else here.
             }
             finally {
+                final boolean success = completedSuccessfully;
                 SwingUtilities.invokeLater(() -> {
                     isOperationInProgress = false;
+                    batchWorker = null;
                     MainWindow.getInstance().reload(); // Reload current dir to show new tags
-                    dispose(); // debatable, but probably makes sense to close after a successful batch operation.
+
+                    if (success) {
+                        dispose(); // debatable, but probably makes sense to close after a successful batch operation.
+                    }
                 });
 
                 fireProgressComplete(); // make sure the progress dialog closes

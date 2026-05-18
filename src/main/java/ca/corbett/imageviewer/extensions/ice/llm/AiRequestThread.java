@@ -11,6 +11,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -31,6 +32,9 @@ import java.util.logging.Logger;
 public class AiRequestThread extends SimpleProgressWorker {
 
     private static final Logger log = Logger.getLogger(AiRequestThread.class.getName());
+
+    private static final int CONNECT_TIMEOUT_SECONDS = 15;
+    private static final int REQUEST_TIMEOUT_SECONDS = 120;
 
     private final File imageFile;
     private final AiConnectionManager manager;
@@ -98,10 +102,13 @@ public class AiRequestThread extends SimpleProgressWorker {
             // Now we can fire off the request and parse the response:
             try {
                 fireProgressUpdate(1, "Sending request to LLM...");
-                HttpClient client = HttpClient.newHttpClient();
+                HttpClient client = HttpClient.newBuilder()
+                                              .connectTimeout(Duration.ofSeconds(CONNECT_TIMEOUT_SECONDS))
+                                              .build();
                 HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                                                                 .uri(url.toURI())
-                                                                .header("Content-Type", "application/json");
+                                                                .header("Content-Type", "application/json")
+                                                                .timeout(Duration.ofSeconds(REQUEST_TIMEOUT_SECONDS));
                 if (!apiKey.isBlank()) {
                     requestBuilder.header("Authorization", "Bearer " + apiKey);
                 }
