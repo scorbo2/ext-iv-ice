@@ -1,7 +1,7 @@
 {
   "name": "ICE",
   "author": "steve@corbett.ca",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "targetAppName": "ImageViewer",
   "targetAppVersion": "3.2",
   "shortDescription": "Semantic tagging and searching of images.",
