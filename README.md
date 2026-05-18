@@ -1,10 +1,11 @@
 # ext-iv-ice
 
 ## What is this?
-This is an extension for the ImageViewer application to allow semantic tagging of images, and searches
-based on those tags. Originally a standalone application called ICE (Image Classification Engine) from 2012, this
-extension duplicates some of the functionality of the original application in the form of an extension
-for ImageViewer.
+
+This is an extension for the [ImageViewer](https://github.com/scorbo2/imageviewer/) application to allow semantic
+tagging of images, and searches based on those tags. Originally a standalone application called ICE (Image
+Classification Engine) from 2012, this extension duplicates some of the functionality of the original application
+in the form of an extension for ImageViewer.
 
 ## How does it work?
 When the ICE extension is first installed, the ImageViewer interface at first glance looks pretty much the
@@ -52,8 +53,8 @@ Here, we can apply tags to an entire directory of photos at a time, with optiona
 If there are tags that a set of photos all have in common (for example, location, or the date they were taken),
 you don't need to tag each image individually. 
 
-On this dialog we also have the option of using "special" tags that will be substituted with some value 
-dynamically. This can be very useful! For example, if directory that contains the photos to be tagged is named
+On this dialog we also have the option of using "special" tags that will be substituted with some value
+dynamically. This can be very useful! For example, if the directory that contains the photos to be tagged is named
 after the location where the photos were taken, then we can use the special tag `$(imageDirName)`, and this
 will be replaced with the directory name.
 
@@ -68,6 +69,53 @@ replaced with the name of the containing directory. When we're finished, we can 
 and press Ctrl+G to view the tags that were applied to it:
 
 ![Tag images result](docs/screenshot08.jpg)
+
+### Quick-tagging
+
+There's another option to help you quickly tag images. You can assign up to 8 hotkeys to quickly apply
+either a single tag to the current image, or a set of tags. You can find this option in the properties
+dialog, under `ICE - General`. It looks like this:
+
+![Quick tagging](docs/screenshot14.png)
+
+Any entry with a blank tag list is ignored. In the screenshot above, you can see that `Ctrl+F1` through `Ctrl+F6`
+are used for frequently-used tags, while `Ctrl+F7` and `Ctrl+F8` are not currently used. Hit the hotkey
+when viewing any image to apply the corresponding tags. If the given tags are already present for the image,
+they will not be duplicated.
+
+### Experimental! Auto-tagging with an LLM
+
+**New in 3.3.0!** - if you have access to any OpenAI-compatible LLM with vision/multimodal capabilities,
+you can use the new "Auto-tag" feature to get the LLM to generate tags for you based on the image content.
+This is an experimental feature and is subject to change! To get started, you'll need to configure your
+LLM connection details. You can do this in the properties dialog, in the `Auto-tag` section. It looks like this:
+
+![Auto-tag configuration](docs/screenshot15.png)
+
+The following configuration can be specified:
+
+- **LLM base URL** - the base URL of your LLM API endpoint. This is just the server with optional port. For example:
+  `http://localhost:8080` or `https://my-llm-provider.com`. Don't enter the path information (`v1/chat/completions` for
+  example).
+- **LLM API key** - if your LLM provider requires an API key, you can enter it here. If not required, leave blank.
+  Warning: any value you enter here will be saved in plain text in the application properties file! If you don't want
+  that, you can specify the `OPENAI_API_KEY` environment variable instead, and leave this value blank. The application
+  will get the value to use from the environment.
+- **LLM model name** - the name of the model to use for auto-tagging. Not all servers require this value.
+- **LLM tag list** - an optional list of tags that the LLM will be constrained to choose from. You can leave this blank
+  to allow the LLM to decide on its own tags, but be aware that the results may be unpredictable and inconsistent from
+  image to image. The recommended approach is to supply a well-chosen tag list that is relevant to your images. For
+  example, for a mountain biking photo collection:
+  `daytime, nighttime, sunny, rainy, winter, summer, mountains, forest, river`, and so on.
+- **Auto-tag selected** - choose the hotkey that will trigger auto-tag for the currently selected image. Default 'F9'.
+- **Auto-tag batch** - choose the hotkey that will trigger auto-tag for all images in the current directory (with
+  optional recursion). Default 'Ctrl+F9'. Warning: unlike single-image auto-tagging, batch auto-tagging writes the
+  returned tags directly to each image's tag file without a review step. If you cancel the operation, or if it fails
+  partway through, any tags already written will remain on disk.
+
+Note that auto-tagging is currently only supported for PNG and JPEG images. Your LLM server may have an upper
+limit on file size and/or number of allowed requests. Be particularly careful with the "batch" option, as the number of
+requests may be quite large!
 
 ### Searching for images
 
@@ -122,7 +170,7 @@ remove the extension, revisit the extension manager dialog, select "ICE" in the 
 ### Option 2: Manual download
 
 You can manually download the extension jar:
-[ext-iv-ice-3.2.0.jar](https://www.corbett.ca/apps/ImageViewer/extensions/3.2/ext-iv-ice-3.2.0.jar)
+[ext-iv-ice-3.3.0.jar](https://www.corbett.ca/apps/ImageViewer/extensions/3.2/ext-iv-ice-3.3.0.jar)
 
 Save it to your ~/.ImageViewer/extensions directory and restart the application.
 
@@ -139,7 +187,7 @@ mvn package
 
 # Copy the result to the extensions directory:
 cd target
-cp ext-iv-ice-3.2.0.jar ~/.ImageViewer/extensions
+cp ext-iv-ice-3.3.0.jar ~/.ImageViewer/extensions
 ```
 
 ## More information
