@@ -20,19 +20,29 @@ public class AutoTagBatchAction extends EnhancedAction {
     private static AutoTagBatchAction instance;
 
     private final String requestTemplate;
-    private final String requestTemplateTagless;
+    private String taggedPrompt;
+    private String taglessPrompt;
 
-    private AutoTagBatchAction(String requestTemplate, String requestTemplateTagless) {
+    private AutoTagBatchAction(String requestTemplate) {
         super(NAME);
         this.requestTemplate = requestTemplate;
-        this.requestTemplateTagless = requestTemplateTagless;
     }
 
-    public static AutoTagBatchAction getInstance(String requestTemplate, String requestTemplateTagless) {
+    public static AutoTagBatchAction getInstance(String requestTemplate) {
         if (instance == null) {
-            instance = new AutoTagBatchAction(requestTemplate, requestTemplateTagless);
+            instance = new AutoTagBatchAction(requestTemplate);
         }
         return instance;
+    }
+
+    /**
+     * Sets the system prompt templates for "tagged" (restricted tag list is specified)
+     * and "tagless" (no tag list specified) requests. These templates will be used for all
+     * subsequent auto-tag requests until they are changed again.
+     */
+    public void setSysPrompts(String tagged, String tagless) {
+        this.taggedPrompt = tagged;
+        this.taglessPrompt = tagless;
     }
 
     @Override
@@ -53,7 +63,7 @@ public class AutoTagBatchAction extends EnhancedAction {
 
         // Make sure we have good LLM configuration before proceeding,
         // and disable the "warn if no tag restrictions" option, as we will allow the user to override that anyway:
-        AiConnectionManager aiManager = new AiConnectionManager(requestTemplate, requestTemplateTagless, false);
+        AiConnectionManager aiManager = new AiConnectionManager(requestTemplate, taggedPrompt, taglessPrompt, false);
         if (!aiManager.isFeatureEnabled()) {
             MainWindow.getInstance().showMessageDialog(NAME,
                                                        "Auto-tag batch is not available because the LLM connection is not properly configured." +

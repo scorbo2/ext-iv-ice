@@ -48,8 +48,9 @@ public class AiConnectionManager {
 
     private static final Logger log = Logger.getLogger(AiConnectionManager.class.getName());
 
-    private final String jsonTemplate;
-    private final String jsonTemplateTagless;
+    private final String requestTemplate;
+    private final String taggedPrompt;
+    private final String taglessPrompt;
     private boolean featureEnabled;
     private URL llmUrl;
     private String llmModel;
@@ -64,34 +65,36 @@ public class AiConnectionManager {
     public static final String NO_TAGS = "none";
 
     // Our search and replace keys for preparing our request json from templates:
+    public static final String KEY_PROMPT = "{{PROMPT}}";
     public static final String KEY_MODEL = "{{MODEL}}";
     public static final String KEY_IMG_DATA = "{{IMGDATA}}";
     public static final String KEY_TAGS = "{{TAGS}}";
 
-    public AiConnectionManager(String jsonTemplate, String jsonTemplateTagless) {
-        this(jsonTemplate, jsonTemplateTagless, true);
+    /**
+     * You must specify the json request template, and both the "tagged" and "tagless" system prompts.
+     *
+     * @param requestTemplate The json template for the request body, with placeholders for prompt, model, image data, and tags. This is required.
+     * @param taggedPrompt    The system prompt to use when a restricted tag list is provided. This is required.
+     * @param taglessPrompt   The system prompt to use when no tag list is provided. This is required.
+     */
+    public AiConnectionManager(String requestTemplate, String taggedPrompt, String taglessPrompt) {
+        this(requestTemplate, taggedPrompt, taglessPrompt, true);
     }
 
     /**
-     * The two json template strings must be supplied here (they do not change dynamically).
-     * <ul>
-     *     <li><b>jsonTemplate</b> - If the user gives us a specific list of tags, we will constrain the LLM
-     *         to using ONLY those tags in its response. This is the preferred use case.</li>
-     *     <li><b>jsonTemplateTagless</b> - For a more YOLO experience, the user can leave the tag list blank,
-     *         and we'll leave it entirely up to the LLM to decide on tags. Results not guaranteed to make sense!</li>
-     * </ul>
-     * <p>
-     *     If either template is blank or null, the LLM connection feature is disabled, and every
-     *     request will return the "none" response.
-     * </p>
+     * This constructor overload allows you to specify whether we should emit a warning if the user has not
+     * configured any tag restrictions. The default is true, but you can turn it off to avoid log noise if
+     * you are handling that case yourself.
      *
-     * @param jsonTemplate        The json template for a tag-constrained analysis request. If blank, the feature is disabled.
-     * @param jsonTemplateTagless The json template for a tagless analysis request. If blank, the feature is disabled.
+     * @param requestTemplate The json template for the request body, with placeholders for prompt, model, image data, and tags. This is required.
+     * @param taggedPrompt The system prompt to use when a restricted tag list is provided. This is required.
+     * @param taglessPrompt The system prompt to use when no tag list is provided. This is required.
      * @param warnUnrestricted    Emits a log warning if no tag restrictions are set in application properties.
      */
-    public AiConnectionManager(String jsonTemplate, String jsonTemplateTagless, boolean warnUnrestricted) {
-        this.jsonTemplate = jsonTemplate;
-        this.jsonTemplateTagless = jsonTemplateTagless;
+    public AiConnectionManager(String requestTemplate, String taggedPrompt, String taglessPrompt, boolean warnUnrestricted) {
+        this.requestTemplate = requestTemplate;
+        this.taggedPrompt = taggedPrompt;
+        this.taglessPrompt = taglessPrompt;
         this.warnUnrestricted = warnUnrestricted;
 
         // We'll load this here in the constructor.
@@ -158,12 +161,16 @@ public class AiConnectionManager {
         dialog.runWorker(requestThread, true);
     }
 
-    public String getJsonTemplate() {
-        return jsonTemplate;
+    public String getRequestTemplate() {
+        return requestTemplate;
     }
 
-    public String getJsonTemplateTagless() {
-        return jsonTemplateTagless;
+    public String getTaggedPrompt() {
+        return taggedPrompt;
+    }
+
+    public String getTaglessPrompt() {
+        return taglessPrompt;
     }
 
     public URL getLlmUrl() {
@@ -228,9 +235,15 @@ public class AiConnectionManager {
         llmApiKey = null;
         llmTags = null;
 
-        // If either of our templates are null, there's no point in continuing:
-        if (jsonTemplate == null || jsonTemplateTagless == null) {
-            log.warning("LLM JSON templates not supplied - LLM feature is disabled :(");
+        // If the json template is null, there's no point in continuing:
+        if (requestTemplate == null) {
+            log.warning("LLM JSON template not supplied - LLM feature is disabled :(");
+            return;
+        }
+
+        // We'll also safeguard against null or empty system prompts:
+        if (taggedPrompt == null || taggedPrompt.isBlank() || taglessPrompt == null || taglessPrompt.isBlank()) {
+            log.warning("System prompts not supplied - LLM feature is disabled :(");
             return;
         }
 
