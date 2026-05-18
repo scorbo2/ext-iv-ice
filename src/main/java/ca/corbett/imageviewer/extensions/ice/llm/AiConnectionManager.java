@@ -235,8 +235,8 @@ public class AiConnectionManager {
         llmApiKey = null;
         llmTags = null;
 
-        // If the json template is null, there's no point in continuing:
-        if (requestTemplate == null) {
+        // If the json template is null or blank, there's no point in continuing:
+        if (requestTemplate == null || requestTemplate.isBlank()) {
             log.warning("LLM JSON template not supplied - LLM feature is disabled :(");
             return;
         }

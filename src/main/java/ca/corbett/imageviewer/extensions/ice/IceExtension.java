@@ -239,7 +239,8 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
                                                                                 "Tag-restricted prompt:");
         taggedProp.setHelpText(
                 "<html>The system prompt to use for auto-tagging when the LLM tag list is specified.<br>" +
-                        "<b>Modify with caution!</b></html>");
+                        "Include the <b>{{TAGS}}</b> placeholder where you want the tag list to be injected.<br>" +
+                        "<br><b>Warning:</b> Modify this prompt with caution!</html>");
         taggedProp.setValue(sysPromptTagged);
         taggedProp.setAllowBlank(false);
         taggedProp.setAllowPopoutEditing(true);
@@ -251,7 +252,8 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
                                                                                  "Unrestricted prompt:");
         taglessProp.setHelpText(
                 "<html>The system prompt to use for auto-tagging when the LLM tag list is <b>not</b> specified.<br>" +
-                        "<b>Modify with caution!</b></html>");
+                        "Do not include the <b>{{TAGS}}</b> placeholder in this prompt.<br>" +
+                        "<br><b>Warning:</b> Modify this prompt with caution!</html>");
         taglessProp.setValue(sysPromptUntagged);
         taglessProp.setAllowBlank(false);
         taglessProp.setAllowPopoutEditing(true);
@@ -676,20 +678,23 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
     /**
      * Looks up the named LongTextProperty in AppConfig and returns its currently configured value.
      * Returns the given default value if the property is not found or is not a LongTextProperty.
-     * Also returns null if the property value is null or blank.
+     * Also returns the default value if the property value is null or blank.
+     * If the given default value is null, this method will return an empty string.
+     * This method will never return null!
      */
     private String getLongTextPropValue(String propName, String defaultValue) {
         AbstractProperty prop = AppConfig.getInstance().getPropertiesManager().getProperty(propName);
         if (prop instanceof LongTextProperty textProp) {
             String value = textProp.getValue();
             if (value == null || value.isBlank()) {
-                return defaultValue;
+                return defaultValue == null ? "" : defaultValue;
             }
             return value;
         }
         else {
-            // This can happen on a fresh install. Not a cause for alarm.
-            return defaultValue;
+            // Our property might be missing if this is the first run on a new install.
+            // So, it's not an error if we get in here. Just return the supplied default.
+            return defaultValue == null ? "" : defaultValue;
         }
     }
 }
