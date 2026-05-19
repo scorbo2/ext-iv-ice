@@ -118,6 +118,8 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
     public static final String autoTagBatchKeyProp = "ICE.Auto-tag.autoTagBatchHotKey";
     public static final String sysPromptTaggedProp = "ICE.Auto-tag.sysPromptTagged";
     public static final String sysPromptTaglessProp = "ICE.Auto-tag.sysPromptTagless";
+    public static final String llmConnectTimeoutProp = "ICE.Auto-tag.llmConnectTimeout";
+    public static final String llmRequestTimeoutProp = "ICE.Auto-tag.llmRequestTimeout";
 
     private final List<TagPreviewPanel> tagPreviewPanels = new ArrayList<>();
     private final List<QuickTagPanel> quickTagPanels = new ArrayList<>();
@@ -213,6 +215,10 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
                          .setPassword("")
                          .setHelpText("<html>Your API key for the LLM server.<br>" +
                                               "Not needed for some servers, like a local LLaMA instance.</html>"));
+        list.add(new ComboProperty<>(llmConnectTimeoutProp, "Connect timeout:", getConnectTimeoutOptions(), 1,
+                                     false));
+        list.add(new ComboProperty<>(llmRequestTimeoutProp, "Request timeout:", getRequestTimeoutOptions(), 1,
+                                     false));
         list.add(new ShortTextProperty(llmModelProp, "LLM model name:", "gpt-3.5-turbo")
                          .setAllowBlank(true) // blank means not needed for this server
                          .setHelpText("<html>The name of the model to use for tag generation.</html>"));
@@ -696,5 +702,63 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
             // So, it's not an error if we get in here. Just return the supplied default.
             return defaultValue == null ? "" : defaultValue;
         }
+    }
+
+    /**
+     * Returns the list of options for the LLM connect timeout combo property.
+     */
+    private List<String> getConnectTimeoutOptions() {
+        return List.of("5 seconds", "10 seconds", "30 seconds", "60 seconds");
+    }
+
+    /**
+     * Returns the currently-configured LLM connect timeout in milliseconds.
+     */
+    public static int getConnectTimeoutMS() {
+        // Look up our config prop:
+        PropertiesManager propsManager = AppConfig.getInstance().getPropertiesManager();
+        AbstractProperty prop = propsManager.getProperty(IceExtension.llmConnectTimeoutProp);
+        if (prop instanceof ComboProperty<?> comboProp) {
+            int selectedIndex = comboProp.getSelectedIndex();
+            return switch (selectedIndex) {
+                case 0 -> 5000;
+                case 1 -> 10000;
+                case 2 -> 30000;
+                case 3 -> 60000;
+                default -> 10000; // default to 10 seconds if something goes wrong
+            };
+        }
+
+        return 10000; // default to 10 seconds if something goes wrong
+    }
+
+    /**
+     * Returns the list of options for the LLM request timeout combo property.
+     * These values are higher than the connect timeout options, because request
+     * processing can take much longer.
+     */
+    private List<String> getRequestTimeoutOptions() {
+        return List.of("30 seconds", "60 seconds", "120 seconds", "300 seconds");
+    }
+
+    /**
+     * Returns the currently-configured LLM request timeout in milliseconds.
+     */
+    public static int getRequestTimeoutMS() {
+        // Look up our config prop:
+        PropertiesManager propsManager = AppConfig.getInstance().getPropertiesManager();
+        AbstractProperty prop = propsManager.getProperty(IceExtension.llmRequestTimeoutProp);
+        if (prop instanceof ComboProperty<?> comboProp) {
+            int selectedIndex = comboProp.getSelectedIndex();
+            return switch (selectedIndex) {
+                case 0 -> 30000;
+                case 1 -> 60000;
+                case 2 -> 120000;
+                case 3 -> 300000;
+                default -> 60000; // default to 60 seconds if something goes wrong
+            };
+        }
+
+        return 60000; // default to 60 seconds if something goes wrong
     }
 }

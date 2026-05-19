@@ -1,6 +1,7 @@
 package ca.corbett.imageviewer.extensions.ice.llm;
 
 import ca.corbett.extras.progress.SimpleProgressWorker;
+import ca.corbett.imageviewer.extensions.ice.IceExtension;
 import ca.corbett.imageviewer.extensions.ice.TagList;
 import com.fasterxml.jackson.core.io.SerializedString;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,14 +35,13 @@ public class AiRequestThread extends SimpleProgressWorker {
 
     private static final Logger log = Logger.getLogger(AiRequestThread.class.getName());
 
-    private static final int CONNECT_TIMEOUT_SECONDS = 15;
-    private static final int REQUEST_TIMEOUT_SECONDS = 120;
-
     private final File imageFile;
     private final AiConnectionManager manager;
     private final AiConnectionManager.CompletionCallback onComplete;
     private final AiConnectionManager.ErrorCallback onError;
     private boolean chatty;
+    private long connectTimeoutMS;
+    private long requestTimeoutMS;
 
     public AiRequestThread(File imageFile,
                            AiConnectionManager manager,
@@ -52,6 +52,10 @@ public class AiRequestThread extends SimpleProgressWorker {
         this.onError = onError;
         this.imageFile = imageFile;
         chatty = true;
+
+        // Look up our timeout settings now, before the thread starts:
+        connectTimeoutMS = IceExtension.getConnectTimeoutMS();
+        requestTimeoutMS = IceExtension.getRequestTimeoutMS();
     }
 
     /**
@@ -106,12 +110,12 @@ public class AiRequestThread extends SimpleProgressWorker {
             try {
                 fireProgressUpdate(1, "Sending request to LLM...");
                 HttpClient client = HttpClient.newBuilder()
-                                              .connectTimeout(Duration.ofSeconds(CONNECT_TIMEOUT_SECONDS))
+                                              .connectTimeout(Duration.ofMillis(connectTimeoutMS))
                                               .build();
                 HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                                                                 .uri(url.toURI())
                                                                 .header("Content-Type", "application/json")
-                                                                .timeout(Duration.ofSeconds(REQUEST_TIMEOUT_SECONDS));
+                                                                .timeout(Duration.ofMillis(requestTimeoutMS));
                 if (!apiKey.isBlank()) {
                     requestBuilder.header("Authorization", "Bearer " + apiKey);
                 }
