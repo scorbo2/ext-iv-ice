@@ -279,6 +279,14 @@ public class AiRequestThread extends SimpleProgressWorker {
 
             // Convert to jpeg with a lower quality setting:
             imageBytes = toJpegBytesWithQuality(scaledImage, 0.75f);
+
+            // Wonky edge case: it might happen that our "downscaled" image is larger
+            // than the original. For example, a PNG image with a lot of flat colors.
+            // So, if the downscale failed, let's not use it:
+            if (imageBytes.length >= imageFile.length()) {
+                imageBytes = null; // screw it, let's just pretend this never happened
+            }
+
         }
         finally {
             if (scaledImage != null) {
