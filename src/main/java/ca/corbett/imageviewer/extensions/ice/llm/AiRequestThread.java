@@ -260,8 +260,8 @@ public class AiRequestThread extends SimpleProgressWorker {
             int origW = original.getWidth();
             int origH = original.getHeight();
             double scaleRatio = Math.min(1.0, (double)maxDimension / Math.max(origW, origH));
-            int newW = (int)(origW * scaleRatio);
-            int newH = (int)(origH * scaleRatio);
+            int newW = Math.max(1, (int)(origW * scaleRatio));
+            int newH = Math.max(1, (int)(origH * scaleRatio));
 
             // Scale it in memory:
             scaledImage = new BufferedImage(newW, newH, BufferedImage.TYPE_INT_RGB);
