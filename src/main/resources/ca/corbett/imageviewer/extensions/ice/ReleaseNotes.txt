@@ -1,13 +1,13 @@
 ext-iv-ice Release Notes
 Author: Steve Corbett
 
-Version 3.4.0 [TODO - release date]
+Version 3.4.0 [2026-05-18]
   #94 - Auto-tag: remove "thinking" data from some LLM models
   #91 - Auto-tag: add threshold option for image downscaling
   #89 - Auto-tag: make connect/request timeouts configurable
   #88 - Auto-tag: make system prompts configurable
 
-Version 3.3.0 [2026-05-18]
+Version 3.3.0 [2026-05-17]
   #86 - Auto-tag: add support for OPENAI_API_KEY env var
   #83 - Update README for the new auto-tag feature
   #79 - Auto-tag: add suggested tag preview dialog
