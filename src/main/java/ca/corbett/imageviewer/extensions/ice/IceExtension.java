@@ -11,9 +11,11 @@ import ca.corbett.extras.properties.ComboProperty;
 import ca.corbett.extras.properties.IntegerProperty;
 import ca.corbett.extras.properties.KeyStrokeProperty;
 import ca.corbett.extras.properties.LabelProperty;
+import ca.corbett.extras.properties.LongTextProperty;
 import ca.corbett.extras.properties.PasswordProperty;
 import ca.corbett.extras.properties.PropertiesManager;
 import ca.corbett.extras.properties.ShortTextProperty;
+import ca.corbett.forms.fields.LongTextField;
 import ca.corbett.imageviewer.AppConfig;
 import ca.corbett.imageviewer.ImageOperation;
 import ca.corbett.imageviewer.extensions.ImageViewerExtension;
@@ -76,8 +78,9 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
 
     private static final Logger log = Logger.getLogger(IceExtension.class.getName());
 
-    private static final String imageAnalysisJsonLocation = "ca/corbett/imageviewer/extensions/ice/llm/image_analysis.json";
-    private static final String imageAnalysisJsonNoTagsLocation = "ca/corbett/imageviewer/extensions/ice/llm/image_analysis_tagless.json";
+    private static final String requestTemplateLocation = "ca/corbett/imageviewer/extensions/ice/llm/request_template.json";
+    private static final String sysPromptTaggedLocation = "ca/corbett/imageviewer/extensions/ice/llm/sys_prompt_tagged.txt";
+    private static final String sysPromptUntaggedLocation = "ca/corbett/imageviewer/extensions/ice/llm/sys_prompt_untagged.txt";
     private static final String extInfoLocation = "/ca/corbett/imageviewer/extensions/ice/extInfo.json";
     public static AppExtensionInfo extInfo;
 
@@ -110,15 +113,21 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
     public static final String llmApiKeyProp = "ICE.Auto-tag.apiKey";
     public static final String llmModelProp = "ICE.Auto-tag.model";
     public static final String llmUrlProp = "ICE.Auto-tag.url";
+    public static final String llmDownscaleProp = "ICE.Auto-tag.downscaleForLLM";
     public static final String llmTagsProp = "ICE.Auto-tag.tags";
     public static final String autoTagKeyProp = "ICE.Auto-tag.autoTagHotKey";
     public static final String autoTagBatchKeyProp = "ICE.Auto-tag.autoTagBatchHotKey";
+    public static final String sysPromptTaggedProp = "ICE.Auto-tag.sysPromptTagged";
+    public static final String sysPromptTaglessProp = "ICE.Auto-tag.sysPromptTagless";
+    public static final String llmConnectTimeoutProp = "ICE.Auto-tag.llmConnectTimeout";
+    public static final String llmRequestTimeoutProp = "ICE.Auto-tag.llmRequestTimeout";
 
     private final List<TagPreviewPanel> tagPreviewPanels = new ArrayList<>();
     private final List<QuickTagPanel> quickTagPanels = new ArrayList<>();
 
-    private String imageAnalysisTemplate = null;
-    private String imageAnalysisTemplateNoTags = null;
+    private final String requestTemplate;
+    private String sysPromptTagged;
+    private String sysPromptUntagged;
 
     public IceExtension() {
         extInfo = AppExtensionInfo.fromExtensionJar(getClass(), extInfoLocation);
@@ -131,21 +140,12 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
         //       This is a problem because we want to pass these templates to our AutoTagAction.
         //       Submitted [issue 469](https://github.com/scorbo2/swing-extras/issues/469) in swing-extras
         //       to address this. For now, we have to load everything in our constructor.
-        imageAnalysisTemplate = getTextResource(imageAnalysisJsonLocation);
-        imageAnalysisTemplateNoTags = getTextResource(imageAnalysisJsonNoTagsLocation);
-        if (imageAnalysisTemplate == null || imageAnalysisTemplateNoTags == null) {
-            if (imageAnalysisTemplate == null) {
-                log.severe("IceExtension: can't load image analysis template from resource '"
-                                   + imageAnalysisJsonLocation + "'.");
-            }
-            if (imageAnalysisTemplateNoTags == null) {
-                log.severe("IceExtension: can't load image analysis template from resource '"
-                                   + imageAnalysisJsonNoTagsLocation + "'.");
-            }
-            log.severe("IceExtension: LLM support is disabled.");
-            imageAnalysisTemplate = null; // null disables this feature
-            imageAnalysisTemplateNoTags = null; // null disables this feature
+        requestTemplate = getTextResource(requestTemplateLocation); // fixed value - never editable by user
+        if (requestTemplate == null) {
+            log.severe("IceExtension: LLM support is disabled due to missing request template.");
         }
+        sysPromptTagged = getTextResource(sysPromptTaggedLocation); // default value can be overridden by user
+        sysPromptUntagged = getTextResource(sysPromptUntaggedLocation); // default value can be overridden by user
     }
 
     @Override
@@ -216,6 +216,13 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
                          .setPassword("")
                          .setHelpText("<html>Your API key for the LLM server.<br>" +
                                               "Not needed for some servers, like a local LLaMA instance.</html>"));
+        list.add(new ComboProperty<>(llmConnectTimeoutProp, "Connect timeout:", getConnectTimeoutOptions(), 1,
+                                     false));
+        list.add(new ComboProperty<>(llmRequestTimeoutProp, "Request timeout:", getRequestTimeoutOptions(), 1,
+                                     false));
+        list.add(new ComboProperty<>(llmDownscaleProp, "Downscale when:", getLLMDownscaleOptions(), 2, false)
+                         .setHelpText("<html>The file on disk is not affected!<br>" +
+                                              "Downscaling makes LLM requests smaller and faster.</html>"));
         list.add(new ShortTextProperty(llmModelProp, "LLM model name:", "gpt-3.5-turbo")
                          .setAllowBlank(true) // blank means not needed for this server
                          .setHelpText("<html>The name of the model to use for tag generation.</html>"));
@@ -226,19 +233,44 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
                                               "Leave blank to let the LLM decide (results unpredictable!)</html>"));
         list.add(new KeyStrokeProperty(autoTagKeyProp, "Auto-tag selected:",
                                        KeyStrokeManager.parseKeyStroke("F9"), // Why F9? I dunno.
-                                       AutoTagAction.getInstance(imageAnalysisTemplate, imageAnalysisTemplateNoTags))
+                                       AutoTagAction.getInstance(requestTemplate))
                          .setAllowBlank(true)
                          .setReservedKeyStrokes(AppConfig.RESERVED_KEYSTROKES)
                          .setHelpText(
                                  "<html>Requests auto-tagging of the selected image from the configured LLM.</html>"));
         list.add(new KeyStrokeProperty(autoTagBatchKeyProp, "Auto-tag batch:",
                                        KeyStrokeManager.parseKeyStroke("Ctrl+F9"), // Why Ctrl+F9? I dunno.
-                                       AutoTagBatchAction.getInstance(imageAnalysisTemplate,
-                                                                      imageAnalysisTemplateNoTags))
+                                       AutoTagBatchAction.getInstance(requestTemplate))
                          .setAllowBlank(true)
                          .setReservedKeyStrokes(AppConfig.RESERVED_KEYSTROKES)
                          .setHelpText("<html>Shows a dialog that allows auto-tagging of all jpeg and/or png images" +
                                               "<br>in the current directory, with optional recursion.</html>"));
+        LongTextProperty taggedProp = LongTextProperty.ofDynamicSizingMultiLine(sysPromptTaggedProp,
+                                                                                "Tag-restricted prompt:");
+        taggedProp.setHelpText(
+                "<html>The system prompt to use for auto-tagging when the LLM tag list is specified.<br>" +
+                        "Include the <b>{{TAGS}}</b> placeholder where you want the tag list to be injected.<br>" +
+                        "<br><b>Warning:</b> Modify this prompt with caution!</html>");
+        taggedProp.setValue(sysPromptTagged);
+        taggedProp.setAllowBlank(false);
+        taggedProp.setAllowPopoutEditing(true);
+        taggedProp.addFormFieldGenerationListener((prop, field) -> {
+            ((LongTextField)field).getTextArea().setRows(6); // why is it so hard to set this?
+        });
+        list.add(taggedProp);
+        LongTextProperty taglessProp = LongTextProperty.ofDynamicSizingMultiLine(sysPromptTaglessProp,
+                                                                                 "Unrestricted prompt:");
+        taglessProp.setHelpText(
+                "<html>The system prompt to use for auto-tagging when the LLM tag list is <b>not</b> specified.<br>" +
+                        "Do not include the <b>{{TAGS}}</b> placeholder in this prompt.<br>" +
+                        "<br><b>Warning:</b> Modify this prompt with caution!</html>");
+        taglessProp.setValue(sysPromptUntagged);
+        taglessProp.setAllowBlank(false);
+        taglessProp.setAllowPopoutEditing(true);
+        taglessProp.addFormFieldGenerationListener((prop, field) -> {
+            ((LongTextField)field).getTextArea().setRows(6); // why is it so hard to set this?
+        });
+        list.add(taglessProp);
 
         // Add a few configurable hotkeys for commonly-used tags:
         for (int i = 1; i <= 8; i++) {
@@ -266,6 +298,10 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
     public void onActivate() {
         TagIndex.getInstance().load();
         ReloadUIAction.getInstance().registerReloadable(this);
+        sysPromptTagged = getLongTextPropValue(sysPromptTaggedProp, sysPromptTagged);
+        sysPromptUntagged = getLongTextPropValue(sysPromptTaglessProp, sysPromptUntagged);
+        AutoTagAction.getInstance(requestTemplate).setSysPrompts(sysPromptTagged, sysPromptUntagged);
+        AutoTagBatchAction.getInstance(requestTemplate).setSysPrompts(sysPromptTagged, sysPromptUntagged);
     }
 
     @Override
@@ -375,11 +411,11 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
             }
 
             // Auto-tag menu items:
-            actions.add(AutoTagAction.getInstance(imageAnalysisTemplate, imageAnalysisTemplateNoTags));
+            actions.add(AutoTagAction.getInstance(requestTemplate));
             if (browseMode == MainWindow.BrowseMode.FILE_SYSTEM) {
                 // Batch mode only available if we're browsing directories:
                 // (though it would be a neat feature to batch-tag all images in an image set... maybe later)
-                actions.add(AutoTagBatchAction.getInstance(imageAnalysisTemplate, imageAnalysisTemplateNoTags));
+                actions.add(AutoTagBatchAction.getInstance(requestTemplate));
             }
         }
 
@@ -604,6 +640,16 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
         for (QuickTagPanel panel : quickTagPanels) {
             panel.refreshPreferredWidth(); // user may have changed the preferred quick panel width
         }
+
+        // Check if the user modified our LLM system prompt templates.
+        String newTaggedPrompt = getLongTextPropValue(sysPromptTaggedProp, sysPromptTagged);
+        String newTaglessPrompt = getLongTextPropValue(sysPromptTaglessProp, sysPromptUntagged);
+        if (!newTaggedPrompt.equals(sysPromptTagged) || !newTaglessPrompt.equals(sysPromptUntagged)) {
+            sysPromptTagged = newTaggedPrompt;
+            sysPromptUntagged = newTaglessPrompt;
+            AutoTagAction.getInstance(requestTemplate).setSysPrompts(sysPromptTagged, sysPromptUntagged);
+            AutoTagBatchAction.getInstance(requestTemplate).setSysPrompts(sysPromptTagged, sysPromptUntagged);
+        }
     }
 
     /**
@@ -637,5 +683,117 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
             log.log(Level.SEVERE, "Caught IOException while loading text resource: " + ioe.getMessage(), ioe);
             return null;
         }
+    }
+
+    /**
+     * Looks up the named LongTextProperty in AppConfig and returns its currently configured value.
+     * Returns the given default value if the property is not found or is not a LongTextProperty.
+     * Also returns the default value if the property value is null or blank.
+     * If the given default value is null, this method will return an empty string.
+     * This method will never return null!
+     */
+    private String getLongTextPropValue(String propName, String defaultValue) {
+        AbstractProperty prop = AppConfig.getInstance().getPropertiesManager().getProperty(propName);
+        if (prop instanceof LongTextProperty textProp) {
+            String value = textProp.getValue();
+            if (value == null || value.isBlank()) {
+                return defaultValue == null ? "" : defaultValue;
+            }
+            return value;
+        }
+        else {
+            // Our property might be missing if this is the first run on a new install.
+            // So, it's not an error if we get in here. Just return the supplied default.
+            return defaultValue == null ? "" : defaultValue;
+        }
+    }
+
+    /**
+     * Returns the list of options for the LLM connect timeout combo property.
+     */
+    private List<String> getConnectTimeoutOptions() {
+        return List.of("5 seconds", "10 seconds", "30 seconds", "60 seconds");
+    }
+
+    /**
+     * Returns the currently-configured LLM connect timeout in milliseconds.
+     */
+    public static int getConnectTimeoutMS() {
+        // Look up our config prop:
+        PropertiesManager propsManager = AppConfig.getInstance().getPropertiesManager();
+        AbstractProperty prop = propsManager.getProperty(IceExtension.llmConnectTimeoutProp);
+        if (prop instanceof ComboProperty<?> comboProp) {
+            int selectedIndex = comboProp.getSelectedIndex();
+            return switch (selectedIndex) {
+                case 0 -> 5000;
+                case 1 -> 10000;
+                case 2 -> 30000;
+                case 3 -> 60000;
+                default -> 10000; // default to 10 seconds if something goes wrong
+            };
+        }
+
+        return 10000; // default to 10 seconds if something goes wrong
+    }
+
+    /**
+     * Returns the list of options for the LLM request timeout combo property.
+     * These values are higher than the connect timeout options, because request
+     * processing can take much longer.
+     */
+    private List<String> getRequestTimeoutOptions() {
+        return List.of("30 seconds", "60 seconds", "120 seconds", "300 seconds");
+    }
+
+    /**
+     * Returns the currently-configured LLM request timeout in milliseconds.
+     */
+    public static int getRequestTimeoutMS() {
+        // Look up our config prop:
+        PropertiesManager propsManager = AppConfig.getInstance().getPropertiesManager();
+        AbstractProperty prop = propsManager.getProperty(IceExtension.llmRequestTimeoutProp);
+        if (prop instanceof ComboProperty<?> comboProp) {
+            int selectedIndex = comboProp.getSelectedIndex();
+            return switch (selectedIndex) {
+                case 0 -> 30000;
+                case 1 -> 60000;
+                case 2 -> 120000;
+                case 3 -> 300000;
+                default -> 60000; // default to 60 seconds if something goes wrong
+            };
+        }
+
+        return 60000; // default to 60 seconds if something goes wrong
+    }
+
+    /**
+     * Returns the list of options for the auto-downscale combo property (for auto-tag requests).
+     */
+    private List<String> getLLMDownscaleOptions() {
+        return List.of("Image file > 512KB", "Image file > 1MB", "Image file > 2MB", "Image file > 5MB", "Never");
+    }
+
+    /**
+     * Returns the currently-configured LLM downscale threshold in bytes.
+     * If an image file is larger than this threshold, we will automatically
+     * downscale it before sending it to the LLM.
+     */
+    public static long getLLMDownscaleThresholdBytes() {
+        // Look up our config prop:
+        PropertiesManager propsManager = AppConfig.getInstance().getPropertiesManager();
+        AbstractProperty prop = propsManager.getProperty(IceExtension.llmDownscaleProp);
+        if (prop instanceof ComboProperty<?> comboProp) {
+            int selectedIndex = comboProp.getSelectedIndex();
+            return switch (selectedIndex) {
+                case 0 -> 512 * 1024;
+                case 1 -> 1024 * 1024;
+                case 2 -> 2 * 1024 * 1024;
+                case 3 -> 5 * 1024 * 1024;
+                case 4 -> Long.MAX_VALUE; // effectively "never", YOLO
+                default -> 2 * 1024 * 1024; // default to 2MB if something goes wrong
+            };
+        }
+
+        return 2 * 1024 * 1024; // default to 2MB if something goes wrong
     }
 }

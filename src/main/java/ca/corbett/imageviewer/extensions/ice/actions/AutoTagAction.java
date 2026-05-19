@@ -28,19 +28,29 @@ public class AutoTagAction extends EnhancedAction {
     private static AutoTagAction instance;
 
     private final String requestTemplate;
-    private final String requestTemplateTagless;
+    private String taggedPrompt;
+    private String taglessPrompt;
 
-    private AutoTagAction(String requestTemplate, String requestTemplateTagless) {
+    private AutoTagAction(String requestTemplate) {
         super(NAME);
         this.requestTemplate = requestTemplate;
-        this.requestTemplateTagless = requestTemplateTagless;
     }
 
-    public static AutoTagAction getInstance(String requestTemplate, String requestTemplateTagless) {
+    public static AutoTagAction getInstance(String requestTemplate) {
         if (instance == null) {
-            instance = new AutoTagAction(requestTemplate, requestTemplateTagless);
+            instance = new AutoTagAction(requestTemplate);
         }
         return instance;
+    }
+
+    /**
+     * Sets the system prompt templates for "tagged" (restricted tag list is specified)
+     * and "tagless" (no tag list specified) requests. These templates will be used for all
+     * subsequent auto-tag requests until they are changed again.
+     */
+    public void setSysPrompts(String tagged, String tagless) {
+        this.taggedPrompt = tagged;
+        this.taglessPrompt = tagless;
     }
 
     @Override
@@ -61,7 +71,7 @@ public class AutoTagAction extends EnhancedAction {
         // Create a new AiConnectionManager for this request.
         // This will query AppConfig for all the latest LLM connection settings,
         // and validate them before proceeding.
-        AiConnectionManager aiManager = new AiConnectionManager(requestTemplate, requestTemplateTagless);
+        AiConnectionManager aiManager = new AiConnectionManager(requestTemplate, taggedPrompt, taglessPrompt);
 
         // Make sure our config is good before proceeding:
         if (!aiManager.isFeatureEnabled()) {

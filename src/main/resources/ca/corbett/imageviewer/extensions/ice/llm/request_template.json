@@ -1,0 +1,24 @@
+{
+  "model": "{{MODEL}}",
+  "messages": [
+    {
+      "role": "system",
+      "content": "{{PROMPT}}"
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Please tag this image"
+        },
+        {
+          "type": "image_url",
+          "image_url": {
+            "url": "data:{{MIMETYPE}};base64,{{IMGDATA}}"
+          }
+        }
+      ]
+    }
+  ]
+}
