@@ -2,6 +2,7 @@ ext-iv-ice Release Notes
 Author: Steve Corbett
 
 Version 3.4.0 [TODO - release date]
+  #94 - Auto-tag: remove "thinking" data from some LLM models
   #91 - Auto-tag: add threshold option for image downscaling
   #89 - Auto-tag: make connect/request timeouts configurable
   #88 - Auto-tag: make system prompts configurable
