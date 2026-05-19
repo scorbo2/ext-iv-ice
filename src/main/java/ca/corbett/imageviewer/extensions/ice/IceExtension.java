@@ -113,6 +113,7 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
     public static final String llmApiKeyProp = "ICE.Auto-tag.apiKey";
     public static final String llmModelProp = "ICE.Auto-tag.model";
     public static final String llmUrlProp = "ICE.Auto-tag.url";
+    public static final String llmDownscaleProp = "ICE.Auto-tag.downscaleForLLM";
     public static final String llmTagsProp = "ICE.Auto-tag.tags";
     public static final String autoTagKeyProp = "ICE.Auto-tag.autoTagHotKey";
     public static final String autoTagBatchKeyProp = "ICE.Auto-tag.autoTagBatchHotKey";
@@ -219,6 +220,9 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
                                      false));
         list.add(new ComboProperty<>(llmRequestTimeoutProp, "Request timeout:", getRequestTimeoutOptions(), 1,
                                      false));
+        list.add(new ComboProperty<>(llmDownscaleProp, "Downscale when:", getLLMDownscaleOptions(), 2, false)
+                         .setHelpText("<html>The file on disk is not affected!<br>" +
+                                              "Downscaling makes LLM requests smaller and faster.</html>"));
         list.add(new ShortTextProperty(llmModelProp, "LLM model name:", "gpt-3.5-turbo")
                          .setAllowBlank(true) // blank means not needed for this server
                          .setHelpText("<html>The name of the model to use for tag generation.</html>"));
@@ -760,5 +764,36 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
         }
 
         return 60000; // default to 60 seconds if something goes wrong
+    }
+
+    /**
+     * Returns the list of options for the auto-downscale combo property (for auto-tag requests).
+     */
+    private List<String> getLLMDownscaleOptions() {
+        return List.of("Image file > 512KB", "Image file > 1MB", "Image file > 2MB", "Image file > 5MB", "Never");
+    }
+
+    /**
+     * Returns the currently-configured LLM downscale threshold in bytes.
+     * If an image file is larger than this threshold, we will automatically
+     * downscale it before sending it to the LLM.
+     */
+    public static long getLLMDownscaleThresholdBytes() {
+        // Look up our config prop:
+        PropertiesManager propsManager = AppConfig.getInstance().getPropertiesManager();
+        AbstractProperty prop = propsManager.getProperty(IceExtension.llmDownscaleProp);
+        if (prop instanceof ComboProperty<?> comboProp) {
+            int selectedIndex = comboProp.getSelectedIndex();
+            return switch (selectedIndex) {
+                case 0 -> 512 * 1024;
+                case 1 -> 1024 * 1024;
+                case 2 -> 2 * 1024 * 1024;
+                case 3 -> 5 * 1024 * 1024;
+                case 4 -> Long.MAX_VALUE; // effectively "never", YOLO
+                default -> 2 * 1024 * 1024; // default to 2MB if something goes wrong
+            };
+        }
+
+        return 2 * 1024 * 1024; // default to 2MB if something goes wrong
     }
 }
