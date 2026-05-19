@@ -13,6 +13,7 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -97,7 +98,9 @@ public class AiRequestThread extends SimpleProgressWorker {
             }
 
             // Do our tag substitution in our template to get the actual request body:
-            String jsonBody = prepareRequestBody(model, tags, base64ImageData);
+            String mimeType = imageFile.getName().toLowerCase(Locale.ROOT)
+                                       .endsWith(".png") ? "image/png" : "image/jpeg";
+            String jsonBody = prepareRequestBody(model, tags, base64ImageData, mimeType);
 
             // Now we can fire off the request and parse the response:
             try {
@@ -180,7 +183,7 @@ public class AiRequestThread extends SimpleProgressWorker {
         return badList;
     }
 
-    private String prepareRequestBody(String model, TagList tags, String base64ImageData) {
+    private String prepareRequestBody(String model, TagList tags, String base64ImageData, String mimeType) {
         // Figure out which prompt we need:
         String prompt = tags.isEmpty() ? manager.getTaglessPrompt() : manager.getTaggedPrompt();
 
@@ -194,8 +197,9 @@ public class AiRequestThread extends SimpleProgressWorker {
         // Now we can safely do our string replacement to get the final request body:
         return manager.getRequestTemplate()
                       .replace(AiConnectionManager.KEY_PROMPT, safePrompt)
-                .replace(AiConnectionManager.KEY_MODEL, safeModel)
-                .replace(AiConnectionManager.KEY_IMG_DATA, base64ImageData)
-                .replace(AiConnectionManager.KEY_TAGS, safeTags);
+                      .replace(AiConnectionManager.KEY_MODEL, safeModel)
+                      .replace(AiConnectionManager.KEY_IMG_DATA, base64ImageData)
+                      .replace(AiConnectionManager.KEY_TAGS, safeTags)
+                      .replace(AiConnectionManager.KEY_MIME_TYPE, mimeType);
     }
 }

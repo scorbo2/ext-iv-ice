@@ -69,6 +69,7 @@ public class AiConnectionManager {
     public static final String KEY_MODEL = "{{MODEL}}";
     public static final String KEY_IMG_DATA = "{{IMGDATA}}";
     public static final String KEY_TAGS = "{{TAGS}}";
+    public static final String KEY_MIME_TYPE = "{{MIMETYPE}}";
 
     /**
      * You must specify the json request template, and both the "tagged" and "tagless" system prompts.

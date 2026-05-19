@@ -15,7 +15,7 @@
         {
           "type": "image_url",
           "image_url": {
-            "url": "data:image/jpeg;base64,{{IMGDATA}}"
+            "url": "data:{{MIMETYPE}};base64,{{IMGDATA}}"
           }
         }
       ]
