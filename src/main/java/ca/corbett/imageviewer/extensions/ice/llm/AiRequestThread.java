@@ -13,6 +13,7 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -97,7 +98,9 @@ public class AiRequestThread extends SimpleProgressWorker {
             }
 
             // Do our tag substitution in our template to get the actual request body:
-            String jsonBody = prepareRequestBody(model, tags, base64ImageData);
+            String mimeType = imageFile.getName().toLowerCase(Locale.ROOT)
+                                       .endsWith(".png") ? "image/png" : "image/jpeg";
+            String jsonBody = prepareRequestBody(model, tags, base64ImageData, mimeType);
 
             // Now we can fire off the request and parse the response:
             try {
@@ -180,20 +183,23 @@ public class AiRequestThread extends SimpleProgressWorker {
         return badList;
     }
 
-    private String prepareRequestBody(String model, TagList tags, String base64ImageData) {
-        // Figure out which template we need:
-        String template = tags.isEmpty() ? manager.getJsonTemplateTagless() : manager.getJsonTemplate();
+    private String prepareRequestBody(String model, TagList tags, String base64ImageData, String mimeType) {
+        // Figure out which prompt we need:
+        String prompt = tags.isEmpty() ? manager.getTaglessPrompt() : manager.getTaggedPrompt();
 
         // Handle safe escaping of our String inputs:
-        // (very unlikely, but user could technically have a tag with quotation marks in it)
-        // (note that we don't worry about the base64 image data, since it should already be json-safe)
+        // (things like embedded quotation marks or line breaks can cause problems for us.)
+        // (note that we don't worry about the base64 image data, since it should already be json-safe.)
+        String safePrompt = new String(new SerializedString(prompt).asQuotedChars());
         String safeModel = new String(new SerializedString(model).asQuotedChars());
         String safeTags = new String(new SerializedString(tags.toString()).asQuotedChars());
 
         // Now we can safely do our string replacement to get the final request body:
-        return template
-                .replace(AiConnectionManager.KEY_MODEL, safeModel)
-                .replace(AiConnectionManager.KEY_IMG_DATA, base64ImageData)
-                .replace(AiConnectionManager.KEY_TAGS, safeTags);
+        return manager.getRequestTemplate()
+                      .replace(AiConnectionManager.KEY_PROMPT, safePrompt)
+                      .replace(AiConnectionManager.KEY_MODEL, safeModel)
+                      .replace(AiConnectionManager.KEY_IMG_DATA, base64ImageData)
+                      .replace(AiConnectionManager.KEY_TAGS, safeTags)
+                      .replace(AiConnectionManager.KEY_MIME_TYPE, mimeType);
     }
 }
