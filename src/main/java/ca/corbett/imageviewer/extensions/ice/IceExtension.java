@@ -5,6 +5,7 @@ import ca.corbett.extras.EnhancedAction;
 import ca.corbett.extras.LookAndFeelManager;
 import ca.corbett.extras.RedispatchingMouseAdapter;
 import ca.corbett.extras.io.KeyStrokeManager;
+import ca.corbett.extras.logging.LogConsoleStyle;
 import ca.corbett.extras.properties.AbstractProperty;
 import ca.corbett.extras.properties.BooleanProperty;
 import ca.corbett.extras.properties.ComboProperty;
@@ -18,6 +19,7 @@ import ca.corbett.extras.properties.ShortTextProperty;
 import ca.corbett.forms.fields.LongTextField;
 import ca.corbett.imageviewer.AppConfig;
 import ca.corbett.imageviewer.ImageOperation;
+import ca.corbett.imageviewer.LogConsoleManager;
 import ca.corbett.imageviewer.extensions.ImageViewerExtension;
 import ca.corbett.imageviewer.extensions.ice.actions.AutoTagAction;
 import ca.corbett.imageviewer.extensions.ice.actions.AutoTagBatchAction;
@@ -115,6 +117,7 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
     public static final String llmUrlProp = "ICE.Auto-tag.url";
     public static final String llmDownscaleProp = "ICE.Auto-tag.downscaleForLLM";
     public static final String llmTagsProp = "ICE.Auto-tag.tags";
+    public static final String llmWarnNoTagsProp = "ICE.Auto-tag.warnIfNoTagRestrictions";
     public static final String autoTagKeyProp = "ICE.Auto-tag.autoTagHotKey";
     public static final String autoTagBatchKeyProp = "ICE.Auto-tag.autoTagBatchHotKey";
     public static final String sysPromptTaggedProp = "ICE.Auto-tag.sysPromptTagged";
@@ -231,6 +234,11 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
                          .setHelpText("<html>Comma-separated list of tags.<br>" +
                                               "If specified, tag generation will be restricted to just these.<br>" +
                                               "Leave blank to let the LLM decide (results unpredictable!)</html>"));
+        list.add(new BooleanProperty(llmWarnNoTagsProp, "Log a warning if no tag restrictions", true)
+                         .setHelpText(
+                                 "<html>Logs a warning if you try to auto-tag an image without specifying any tags in the LLM tag list.<br>" +
+                                         "This is because unrestricted tag generation can produce unpredictable or inconsistent results.<br>" +
+                                         "Uncheck this option to disable the log warning.</html>"));
         list.add(new KeyStrokeProperty(autoTagKeyProp, "Auto-tag selected:",
                                        KeyStrokeManager.parseKeyStroke("F9"), // Why F9? I dunno.
                                        AutoTagAction.getInstance(requestTemplate))
@@ -313,6 +321,16 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
         }
         quickTagPanels.clear();
         tagPreviewPanels.clear();
+    }
+
+    /**
+     * We override this to provide custom styles for the ImageViewer log console.
+     */
+    @Override
+    public List<LogConsoleStyle> getLogConsoleStyles() {
+        List<LogConsoleStyle> styles = new ArrayList<>();
+        styles.add(LogConsoleManager.createStyle("Auto-tag:", true, Color.MAGENTA, true));
+        return styles;
     }
 
     /**

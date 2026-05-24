@@ -57,14 +57,15 @@ public class AutoTagAction extends EnhancedAction {
     public void actionPerformed(ActionEvent e) {
         ImageInstance currentImage = MainWindow.getInstance().getSelectedImage();
         if (currentImage.isEmpty()) {
-            MainWindow.getInstance().showMessageDialog(NAME, "Nothing selected.");
+            MainWindow.getInstance().showMessageDialog(NAME, "Auto-tag: Nothing selected.");
             return;
         }
 
         final File imageFile = currentImage.getImageFile();
         String filename = imageFile.getName().toLowerCase();
         if (!filename.endsWith(".jpg") && !filename.endsWith(".jpeg") && !filename.endsWith(".png")) {
-            MainWindow.getInstance().showMessageDialog(NAME, "Auto-tagging is only supported for JPEG and PNG images.");
+            MainWindow.getInstance()
+                      .showMessageDialog(NAME, "Auto-tag: this feature is only supported for JPEG and PNG images.");
             return;
         }
 
@@ -76,7 +77,7 @@ public class AutoTagAction extends EnhancedAction {
         // Make sure our config is good before proceeding:
         if (!aiManager.isFeatureEnabled()) {
             MainWindow.getInstance().showMessageDialog(NAME,
-                                                       "Auto-tag is not available because the LLM connection is not properly configured." +
+                                                       "Auto-tag: the feature not available because the LLM connection is not properly configured." +
                                                                "\nVisit the Auto-tag settings page in application properties to set it up.");
             return;
         }
@@ -121,7 +122,7 @@ public class AutoTagAction extends EnhancedAction {
             if (isEmpty) {
                 SwingUtilities.invokeLater(() -> {
                     MainWindow.getInstance().showMessageDialog(NAME,
-                                                               "The LLM had no tag suggestions for this image.");
+                                                               "Auto-tag: The LLM had no tag suggestions for this image.");
                 });
                 return;
             }
@@ -139,7 +140,7 @@ public class AutoTagAction extends EnhancedAction {
             String errorCode = error.getCode() == AiErrorBody.INTERNAL_ERROR ? "(Internal error)" : error.getCode() + "";
 
             // The request thread already logged the error, so we can just show a simple error message to the user.
-            String msg = "Failed to auto-tag image: "
+            String msg = "Auto-tag: Failed to auto-tag image!"
                     + "\n\nMessage:" + error.getMessage()
                     + "\nCode: " + errorCode
                     + "\nType: " + error.getType();
