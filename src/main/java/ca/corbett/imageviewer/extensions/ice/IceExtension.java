@@ -234,7 +234,7 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
                          .setHelpText("<html>Comma-separated list of tags.<br>" +
                                               "If specified, tag generation will be restricted to just these.<br>" +
                                               "Leave blank to let the LLM decide (results unpredictable!)</html>"));
-        list.add(new BooleanProperty(llmWarnNoTagsProp, "Log a warning if no tag restrictions", true)
+        list.add(new BooleanProperty(llmWarnNoTagsProp, "Log a warning if no tag restrictions are set", true)
                          .setHelpText(
                                  "<html>Logs a warning if you try to auto-tag an image without specifying any tags in the LLM tag list.<br>" +
                                          "This is because unrestricted tag generation can produce unpredictable or inconsistent results.<br>" +

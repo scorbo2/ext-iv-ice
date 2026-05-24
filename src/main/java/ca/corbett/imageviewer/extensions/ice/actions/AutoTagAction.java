@@ -77,7 +77,7 @@ public class AutoTagAction extends EnhancedAction {
         // Make sure our config is good before proceeding:
         if (!aiManager.isFeatureEnabled()) {
             MainWindow.getInstance().showMessageDialog(NAME,
-                                                       "Auto-tag: the feature not available because the LLM connection is not properly configured." +
+                                                       "Auto-tag: the feature is not available because the LLM connection is not properly configured." +
                                                                "\nVisit the Auto-tag settings page in application properties to set it up.");
             return;
         }
