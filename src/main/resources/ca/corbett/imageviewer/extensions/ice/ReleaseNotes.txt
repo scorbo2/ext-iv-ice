@@ -2,6 +2,7 @@ ext-iv-ice Release Notes
 Author: Steve Corbett
 
 Version 3.5.0 [TODO release date]
+  #98 - Auto-tag: add configurable pause in batch mode
   #97 - Auto-tag: LogConsole integration, configurable log warnings
 
 Version 3.4.0 [2026-05-18]

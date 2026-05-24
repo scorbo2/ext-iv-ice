@@ -10,6 +10,7 @@ import ca.corbett.forms.Alignment;
 import ca.corbett.forms.FormPanel;
 import ca.corbett.forms.fields.CheckBoxField;
 import ca.corbett.forms.fields.LabelField;
+import ca.corbett.forms.fields.NumberField;
 import ca.corbett.forms.fields.ShortTextField;
 import ca.corbett.imageviewer.AppConfig;
 import ca.corbett.imageviewer.extensions.ice.IceExtension;
@@ -68,6 +69,7 @@ public class AutoTagBatchDialog extends JDialog {
     private final LabelField imageCountLabel;
     private final CheckBoxField useConfigRestrictionField;
     private final ShortTextField tagRestrictionField;
+    private final NumberField batchPauseField;
     private boolean isOperationInProgress;
     private BatchWorker batchWorker;
 
@@ -88,20 +90,25 @@ public class AutoTagBatchDialog extends JDialog {
         useConfigRestrictionField = new CheckBoxField("Use tag restrictions from configuration", true);
         useConfigRestrictionField.addValueChangedListener(
                 e -> tagRestrictionField.setEnabled(!useConfigRestrictionField.isChecked()));
+        batchPauseField = new NumberField("Request pause (s)", 1, 0, 30, 1);
+        batchPauseField.setHelpText("<html>Number of seconds to pause between requests.<br>" +
+                                            "This may help avoid rate-limiting errors on some servers.<br>" +
+                                            "Set this to 0 to just power through at full speed.</html>");
         FormPanel formPanel = new FormPanel(Alignment.TOP_LEFT);
         formPanel.setBorderMargin(16);
         formPanel.add(List.of(
                 recursiveField,
                 imageCountLabel,
                 useConfigRestrictionField,
-                tagRestrictionField
+                tagRestrictionField,
+                batchPauseField
         ));
 
         setLayout(new BorderLayout());
         add(formPanel, BorderLayout.CENTER);
         add(buildButtonPanel(), BorderLayout.SOUTH);
 
-        setSize(600, 240);
+        setSize(480, 280);
         setResizable(false);
         setLocationRelativeTo(owner);
         setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
@@ -281,11 +288,13 @@ public class AutoTagBatchDialog extends JDialog {
 
         private final List<File> imagesToProcess;
         private final AtomicBoolean isCanceled;
+        private final int pauseDurationS;
 
         public BatchWorker(List<File> imagesToProcess) {
             // Make a copy of the list to avoid concurrency issues:
             this.imagesToProcess = new ArrayList<>(imagesToProcess);
             isCanceled = new AtomicBoolean(false);
+            pauseDurationS = batchPauseField.getCurrentValue().intValue();
         }
 
         public void cancel() {
@@ -354,9 +363,18 @@ public class AutoTagBatchDialog extends JDialog {
                     thread.setChatty(false); // quiet, you!
                     thread.run(); // run the request synchronously in this worker thread, so we can track progress and handle errors appropriately
 
-                    // We'll add a slight, 1s delay between requests, to avoid hammering the server.
-                    // Would this help avoid rate-limiting errors? Dunno, maybe. Just seems polite though.
-                    Thread.sleep(1000);
+                    // Give the server a breather if we are so configured:
+                    if (pauseDurationS > 0) {
+
+                        // If the delay is noticeable, log a message to avoid user panic:
+                        if (pauseDurationS > 3) {
+                            log.info("Auto-tag: Pausing for "
+                                             + pauseDurationS
+                                             + " seconds before sending next request...");
+                        }
+
+                        Thread.sleep(pauseDurationS * 1000L);
+                    }
                 }
 
                 completedSuccessfully = true;
