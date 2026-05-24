@@ -2,7 +2,7 @@ ext-iv-ice Release Notes
 Author: Steve Corbett
 
 Version 3.5.0 [TODO release date]
-  TODO release notes for 3.5.0
+  #97 - Auto-tag: LogConsole integration, configurable log warnings
 
 Version 3.4.0 [2026-05-18]
   #94 - Auto-tag: remove "thinking" data from some LLM models

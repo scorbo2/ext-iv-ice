@@ -136,6 +136,15 @@ public class AiRequestThread extends SimpleProgressWorker {
                 return;
             }
 
+            // Log a nag warning if we have no LLM tag restrictions, since this may lead to unexpected results:
+            // (this can be disabled in the config if the user knows what they're doing)
+            if (tags.isEmpty() && manager.isWarnOnUnrestrictedTagList()) {
+                // This may result in very unexpected behavior. Perhaps the user is unaware of the consequences here:
+                log.warning("Auto-tag: the LLM tags list is empty - the LLM will be free to choose any tags it wants!" +
+                                    " This may result in unpredictable or inconsistent tags being chosen. " +
+                                    "You can supply a tag list in configuration to restrict the LLM.");
+            }
+
             // Do our tag substitution in our template to get the actual request body:
             String jsonBody = prepareRequestBody(model, tags, base64ImageData, mimeType);
 

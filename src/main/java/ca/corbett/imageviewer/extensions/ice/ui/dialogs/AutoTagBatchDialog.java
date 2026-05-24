@@ -171,14 +171,6 @@ public class AutoTagBatchDialog extends JDialog {
         }
         aiManager.setLlmTags(restrictionTags); // okay if empty - LLM will choose tags
 
-        // Emit a log warning if there are no tag restrictions:
-        if (aiManager.getLlmTags().isEmpty()) {
-            // This may result in very unexpected behavior. Perhaps the user is unaware of the consequences here:
-            log.warning("LLM tags list is empty - the LLM will be free to choose any tags it wants!" +
-                                " This may result in unpredictable or inconsistent tags being chosen. " +
-                                "You can supply a tag list in configuration to restrict the LLM.");
-        }
-
         // Set the flag to prevent concurrent batch operations:
         isOperationInProgress = true;
 

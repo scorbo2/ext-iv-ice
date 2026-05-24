@@ -57,16 +57,15 @@ public class AutoTagBatchAction extends EnhancedAction {
         // add the menu item in file system mode, but let's be sure about it:
         if (MainWindow.getInstance().getBrowseMode() != MainWindow.BrowseMode.FILE_SYSTEM) {
             MainWindow.getInstance().showMessageDialog(NAME,
-                                                       "Auto-tag batch is only available in file system browse mode.");
+                                                       "Auto-tag: the batch tag feature is only available in file system browse mode.");
             return;
         }
 
-        // Make sure we have good LLM configuration before proceeding,
-        // and disable the "warn if no tag restrictions" option, as we will allow the user to override that anyway:
-        AiConnectionManager aiManager = new AiConnectionManager(requestTemplate, taggedPrompt, taglessPrompt, false);
+        // Make sure we have good LLM configuration before proceeding:
+        AiConnectionManager aiManager = new AiConnectionManager(requestTemplate, taggedPrompt, taglessPrompt);
         if (!aiManager.isFeatureEnabled()) {
             MainWindow.getInstance().showMessageDialog(NAME,
-                                                       "Auto-tag batch is not available because the LLM connection is not properly configured." +
+                                                       "Auto-tag: the batch tag feature is not available because the LLM connection is not properly configured." +
                                                                "\nVisit the Auto-tag settings page in application properties to set it up.");
             return;
         }
