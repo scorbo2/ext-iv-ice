@@ -105,8 +105,9 @@ public class AiRequestThread extends SimpleProgressWorker {
             TagList llmTags = manager.getLlmTags();
 
             // Load the existing tags for this image, if any:
-            TagList existingTags = TagList.fromFile(new File(imageFile.getParentFile(),
-                                                             FilenameUtils.getBaseName(imageFile.getName()) + ".ice"));
+            // (but only if that option is enabled, to save ourselves some I/O on every image file if not):
+            File tagFile = new File(imageFile.getParentFile(), FilenameUtils.getBaseName(imageFile.getName()) + ".ice");
+            TagList existingTags = includeExistingTags ? TagList.fromFile(tagFile) : new TagList();
 
             // We'll start with the mime type of the original image:
             String base64ImageData;
