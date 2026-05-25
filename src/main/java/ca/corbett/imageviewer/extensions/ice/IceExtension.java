@@ -116,6 +116,7 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
     public static final String llmModelProp = "ICE.Auto-tag.model";
     public static final String llmUrlProp = "ICE.Auto-tag.url";
     public static final String llmDownscaleProp = "ICE.Auto-tag.downscaleForLLM";
+    public static final String llmIncludeExisting = "ICE.Auto-tag.includeExistingTags";
     public static final String llmTagsProp = "ICE.Auto-tag.tags";
     public static final String llmWarnNoTagsProp = "ICE.Auto-tag.warnIfNoTagRestrictions";
     public static final String autoTagKeyProp = "ICE.Auto-tag.autoTagHotKey";
@@ -229,6 +230,10 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
         list.add(new ShortTextProperty(llmModelProp, "LLM model name:", "gpt-3.5-turbo")
                          .setAllowBlank(true) // blank means not needed for this server
                          .setHelpText("<html>The name of the model to use for tag generation.</html>"));
+        list.add(new BooleanProperty(llmIncludeExisting, "Include existing tags in LLM prompt", false)
+                         .setHelpText(
+                                 "<html>If checked, the image's existing tags, if any, will be sent to the LLM when auto-tagging.<br>" +
+                                         "This might be useful to avoid redundant tags in some cases.</html>"));
         list.add(new ShortTextProperty(llmTagsProp, "LLM tag list:", "")
                          .setAllowBlank(true) // blank means the LLM will suggest tags without constraints
                          .setHelpText("<html>Comma-separated list of tags.<br>" +
@@ -782,6 +787,20 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
         }
 
         return 60000; // default to 60 seconds if something goes wrong
+    }
+
+    /**
+     * Returns the currently-configured value of the "include existing tags in LLM prompt" option.
+     */
+    public static boolean getIncludeExistingTagsOption() {
+        // Look up our config prop:
+        PropertiesManager propsManager = AppConfig.getInstance().getPropertiesManager();
+        AbstractProperty prop = propsManager.getProperty(IceExtension.llmIncludeExisting);
+        if (prop instanceof BooleanProperty boolProp) {
+            return boolProp.getValue();
+        }
+
+        return false; // default to false if something goes wrong
     }
 
     /**
