@@ -347,12 +347,12 @@ public class AutoTagBatchDialog extends JDialog {
         @Override
         public void run() {
             // Our progress reporting mechanism doesn't give us a great way to check for user cancellation
-            // other than when we report progress updates. This means that if our pause delay is 20s and the user
-            // hits Cancel halfway through that pause, we have no way of knowing about it until the delay is over.
+            // other than when we report progress updates. This means that if we do Thread.sleep(20000), and the user
+            // hits Cancel halfway through that 20s pause, we have no way of knowing about it until the sleep is over.
             // The best way around this is to add "fake" steps at 1s intervals during our pauses, so that
             // we can report "progress" for the sole reason of checking for cancellation. Not great, but it works.
             // Note: we subtract 1 from the image count because we don't need a pause after the last request.
-            // Also note: if pauseDurationS is 0, this evaluates to 0, so there are no fake steps, which is great.
+            // Also note: if pauseDurationS is 0, this evaluates to 0, so we won't add fake steps as there is no pause.
             final int pauseSteps = (imagesToProcess.size() - 1) * pauseDurationS;
             fireProgressBegins(imagesToProcess.size() + pauseSteps);
             int step = 0;
@@ -374,6 +374,7 @@ public class AutoTagBatchDialog extends JDialog {
 
                     // If this isn't the last image, let's pause (if so configured):
                     // (this configurable pause is intended to help avoid rate-limiting on some servers)
+                    boolean wasCanceled = false;
                     if (fileIndex < imagesToProcess.size() - 1) {
                         for (int pauseStep = 0; pauseStep < pauseDurationS; pauseStep++) {
                             // If the delay gets noticeable, log a message to avoid user panic:
@@ -389,9 +390,15 @@ public class AutoTagBatchDialog extends JDialog {
                             // Report progress at 1s intervals solely so we can check for cancellation:
                             if (!fireProgressUpdate(step++, "Pausing...") || isCanceled.get()) {
                                 log.info("Batch auto-tagging cancelled by user during pause.");
+                                wasCanceled = true;
                                 break;
                             }
                         }
+                    }
+
+                    // Don't continue with the batch loop if we are canceling out:
+                    if (wasCanceled) {
+                        break;
                     }
                 }
 
