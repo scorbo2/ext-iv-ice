@@ -5,6 +5,8 @@ import ca.corbett.extras.io.FileSystemUtil;
 import ca.corbett.extras.properties.BooleanProperty;
 import ca.corbett.extras.properties.PropertiesManager;
 import ca.corbett.imageviewer.AppConfig;
+import ca.corbett.imageviewer.extensions.ice.io.TagIndexPersistence;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,14 +58,20 @@ class TagIndexTest {
                 .build();
     }
 
+    @AfterAll
+    public static void tearDownClass() {
+        // Clean up SQLite connection after all tests
+        TagIndexPersistence.closeConnection();
+    }
+
     @BeforeEach
     public void setUpTagIndex() {
         // Get a fresh instance for each test and inject our mocked AppConfig
         tagIndex = TagIndex.getInstance();
         tagIndex.setAppConfigProvider(() -> appConfig);
         
-        // Set index file to temp directory to avoid overwriting real tagIndex.ice
-        File tempIndexFile = new File(tempDir.toFile(), "tagIndex.ice");
+        // Set index file to temp directory to avoid overwriting real tagIndex.db
+        File tempIndexFile = new File(tempDir.toFile(), "tagIndex.db");
         tagIndex.setIndexFile(tempIndexFile);
         
         tagIndex.clear(); // Ensure clean state

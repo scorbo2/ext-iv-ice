@@ -4,6 +4,7 @@ import ca.corbett.extras.properties.AbstractProperty;
 import ca.corbett.extras.properties.BooleanProperty;
 import ca.corbett.imageviewer.AppConfig;
 import ca.corbett.imageviewer.Version;
+import ca.corbett.imageviewer.extensions.ice.io.TagIndexMigration;
 import ca.corbett.imageviewer.extensions.ice.io.TagIndexPersistence;
 import ca.corbett.imageviewer.extensions.ice.threads.ScanThread;
 
@@ -57,10 +58,12 @@ public class TagIndex {
 
     private static TagIndex instance;
     private File indexFile;
+    private File legacyIndexFile;
     private final Map<String, TagIndexEntry> indexEntries;
 
     protected TagIndex() {
-        indexFile = new File(Version.SETTINGS_DIR, "tagIndex.ice");
+        indexFile = new File(Version.SETTINGS_DIR, "tagIndex.db");
+        legacyIndexFile = new File(Version.SETTINGS_DIR, "tagIndex.ice");
         indexEntries = new HashMap<>();
     }
 
@@ -124,15 +127,17 @@ public class TagIndex {
     /**
      * Package-protected setter for unit tests.
      * Allows tests to specify a different persistence location to avoid overwriting
-     * the actual tagIndex.ice file on the machine running the tests.
+     * the actual tagIndex.db file on the machine running the tests.
      *
-     * @param file The file to use for persistence.
+     * @param file The file to use for SQLite persistence.
      */
     void setIndexFile(File file) {
         if (file.getParentFile() != null && !file.getParentFile().exists()) {
             file.getParentFile().mkdirs();
         }
         indexFile = file;
+        // Derive legacy file path from the same directory with the .ice extension
+        legacyIndexFile = new File(file.getParentFile(), "tagIndex.ice");
     }
 
     /**
@@ -233,6 +238,15 @@ public class TagIndex {
         indexEntries.clear();
     }
 
+    /**
+     * Loads the tag index from the SQLite database, performing migration from
+     * legacy format if needed. The migration decision flow:
+     * <ol>
+     * <li>If SQLite DB exists, load from SQLite directly.</li>
+     * <li>If SQLite DB does not exist but legacy .ice file exists, run one-time migration.</li>
+     * <li>If neither exists, log and return (no entries).</li>
+     * </ol>
+     */
     public void load() {
         // Hmm, I think the load should happen even if the tag index is disabled.
         // I mean, if it exists, let's load it up so it's ready to go if indexing is later enabled.
@@ -241,21 +255,43 @@ public class TagIndex {
         //    return;
         //}
 
-        if (! indexFile.exists()) {
-            log.info("IceExtension: tag index file not found.");
+        // Check if SQLite DB exists
+        if (indexFile.exists()) {
+            try {
+                List<TagIndexEntry> entries = TagIndexPersistence.loadSqlite(indexFile);
+                clear();
+                for (TagIndexEntry entry : entries) {
+                    indexEntries.put(entry.getImageFile().getAbsolutePath(), entry);
+                }
+                log.info("IceExtension: loaded " + indexEntries.size() + " entries from SQLite tag index.");
+            }
+            catch (IOException | UncheckedIOException ioe) {
+                log.log(Level.SEVERE, "TagIndex: problem reading SQLite tag index: " + ioe.getMessage(), ioe);
+            }
             return;
         }
 
-        try {
-            List<TagIndexEntry> entries = TagIndexPersistence.load(indexFile); // auto-detects file version
-            clear(); // after we read the file but before we start processing it
-            for (TagIndexEntry entry : entries) {
-                indexEntries.put(entry.getImageFile().getAbsolutePath(), entry);
+        // SQLite DB doesn't exist - check for legacy file
+        if (legacyIndexFile.exists()) {
+            try {
+                log.info("IceExtension: SQLite tag index not found, migrating from legacy format...");
+                TagIndexMigration.migrate(legacyIndexFile, indexFile);
+                // After migration, load from SQLite
+                List<TagIndexEntry> entries = TagIndexPersistence.loadSqlite(indexFile);
+                clear();
+                for (TagIndexEntry entry : entries) {
+                    indexEntries.put(entry.getImageFile().getAbsolutePath(), entry);
+                }
+                log.info(
+                        "IceExtension: migration complete, loaded " + indexEntries.size() + " entries from SQLite tag index.");
             }
+            catch (IOException | UncheckedIOException ioe) {
+                log.log(Level.SEVERE, "TagIndex: migration or load failed: " + ioe.getMessage(), ioe);
+            }
+            return;
         }
-        catch (IOException | UncheckedIOException ioe) {
-            log.log(Level.SEVERE, "TagIndex: problem reading tag index: "+ioe.getMessage(), ioe);
-        }
+
+        log.info("IceExtension: tag index file not found.");
     }
 
     public void save() {
