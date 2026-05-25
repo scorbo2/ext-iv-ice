@@ -54,7 +54,8 @@ public class AiConnectionManager {
     public static final String NO_TAGS = "none";
 
     // Our search and replace keys for preparing our request json from templates:
-    public static final String KEY_PROMPT = "{{PROMPT}}";
+    public static final String KEY_SYS_PROMPT = "{{SYS_PROMPT}}";
+    public static final String KEY_USER_PROMPT = "{{USER_PROMPT}}";
     public static final String KEY_MODEL = "{{MODEL}}";
     public static final String KEY_IMG_DATA = "{{IMGDATA}}";
     public static final String KEY_TAGS = "{{TAGS}}";
