@@ -82,7 +82,8 @@ public class TagIndexPersistence {
     private static final String SQL_DELETE_ALL = "DELETE FROM tag_index";
 
     private static final String SQL_LOAD_ALL =
-            "SELECT image_path, tag_file_path, tag_file_size, tag_file_last_modified, tags FROM tag_index";
+            "SELECT image_path, tag_file_path, tag_file_size, tag_file_last_modified, tags FROM tag_index " +
+                    "ORDER BY image_path";
 
     // Connection pool / singleton
     private static Connection connection;
