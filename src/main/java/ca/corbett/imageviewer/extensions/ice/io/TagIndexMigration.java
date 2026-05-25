@@ -40,10 +40,15 @@ public class TagIndexMigration {
      *   <li>Bulk insert all entries into SQLite in a single transaction</li>
      *   <li>Rename legacy file to .migrated only after full success</li>
      * </ol>
+     * <p>
+     * If the final rename to the {@value #MIGRATED_SUFFIX} file fails, the migration is still
+     * considered successful because the data has already been persisted to SQLite; in that case,
+     * a warning is logged and the legacy file is left in place for manual cleanup.
+     * </p>
      *
      * @param legacyFile The legacy pipe-separated index file (e.g., tagIndex.ice).
      * @param dbFile     The target SQLite database file path (e.g., tagIndex.db).
-     * @throws IOException if parsing, inserting, or renaming fails.
+     * @throws IOException if the legacy file does not exist, or if parsing or inserting fails.
      */
     public static void migrate(File legacyFile, File dbFile) throws IOException {
         if (!legacyFile.exists()) {
