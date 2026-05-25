@@ -67,11 +67,12 @@ public class TagIndexPersistence {
 
     private static final String SCHEMA_CREATE_METADATA =
             "CREATE TABLE IF NOT EXISTS metadata (" +
-                    "schema_version TEXT PRIMARY KEY NOT NULL)";
+                    "id INTEGER PRIMARY KEY NOT NULL CHECK (id = 1), " +
+                    "schema_version TEXT NOT NULL)";
 
     private static final String SCHEMA_VERSION_INSERT =
-            "INSERT INTO metadata (schema_version) VALUES ('3.5') " +
-                    "ON CONFLICT(schema_version) DO UPDATE SET schema_version = '3.5'";
+            "INSERT INTO metadata (id, schema_version) VALUES (1, '3.5') " +
+                    "ON CONFLICT(id) DO UPDATE SET schema_version = excluded.schema_version";
 
     // Prepared statements for tag_index operations
     private static final String SQL_INSERT_ENTRY =
