@@ -10,6 +10,7 @@ import ca.corbett.forms.Alignment;
 import ca.corbett.forms.FormPanel;
 import ca.corbett.forms.fields.CheckBoxField;
 import ca.corbett.forms.fields.LabelField;
+import ca.corbett.forms.fields.NumberField;
 import ca.corbett.forms.fields.ShortTextField;
 import ca.corbett.imageviewer.AppConfig;
 import ca.corbett.imageviewer.extensions.ice.IceExtension;
@@ -68,6 +69,7 @@ public class AutoTagBatchDialog extends JDialog {
     private final LabelField imageCountLabel;
     private final CheckBoxField useConfigRestrictionField;
     private final ShortTextField tagRestrictionField;
+    private final NumberField batchPauseField;
     private boolean isOperationInProgress;
     private BatchWorker batchWorker;
 
@@ -88,20 +90,25 @@ public class AutoTagBatchDialog extends JDialog {
         useConfigRestrictionField = new CheckBoxField("Use tag restrictions from configuration", true);
         useConfigRestrictionField.addValueChangedListener(
                 e -> tagRestrictionField.setEnabled(!useConfigRestrictionField.isChecked()));
+        batchPauseField = new NumberField("Request pause (s)", 1, 0, 30, 1);
+        batchPauseField.setHelpText("<html>Number of seconds to pause between requests.<br>" +
+                                            "This may help avoid rate-limiting errors on some servers.<br>" +
+                                            "Set this to 0 to just power through at full speed.</html>");
         FormPanel formPanel = new FormPanel(Alignment.TOP_LEFT);
         formPanel.setBorderMargin(16);
         formPanel.add(List.of(
                 recursiveField,
                 imageCountLabel,
                 useConfigRestrictionField,
-                tagRestrictionField
+                tagRestrictionField,
+                batchPauseField
         ));
 
         setLayout(new BorderLayout());
         add(formPanel, BorderLayout.CENTER);
         add(buildButtonPanel(), BorderLayout.SOUTH);
 
-        setSize(600, 240);
+        setSize(480, 280);
         setResizable(false);
         setLocationRelativeTo(owner);
         setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
@@ -281,11 +288,13 @@ public class AutoTagBatchDialog extends JDialog {
 
         private final List<File> imagesToProcess;
         private final AtomicBoolean isCanceled;
+        private final int pauseDurationS;
 
         public BatchWorker(List<File> imagesToProcess) {
             // Make a copy of the list to avoid concurrency issues:
             this.imagesToProcess = new ArrayList<>(imagesToProcess);
             isCanceled = new AtomicBoolean(false);
+            pauseDurationS = batchPauseField.getCurrentValue().intValue();
         }
 
         public void cancel() {
@@ -337,11 +346,20 @@ public class AutoTagBatchDialog extends JDialog {
 
         @Override
         public void run() {
-            fireProgressBegins(imagesToProcess.size());
+            // Our progress reporting mechanism doesn't give us a great way to check for user cancellation
+            // other than when we report progress updates. This means that if our pause delay is 20s and the user
+            // hits Cancel halfway through that pause, we have no way of knowing about it until the delay is over.
+            // The best way around this is to add "fake" steps at 1s intervals during our pauses, so that
+            // we can report "progress" for the sole reason of checking for cancellation. Not great, but it works.
+            // Note: we subtract 1 from the image count because we don't need a pause after the last request.
+            // Also note: if pauseDurationS is 0, this evaluates to 0, so there are no fake steps, which is great.
+            final int pauseSteps = (imagesToProcess.size() - 1) * pauseDurationS;
+            fireProgressBegins(imagesToProcess.size() + pauseSteps);
             int step = 0;
             boolean completedSuccessfully = false;
             try {
-                for (File imageFile : imagesToProcess) {
+                for (int fileIndex = 0; fileIndex < imagesToProcess.size(); fileIndex++) {
+                    File imageFile = imagesToProcess.get(fileIndex);
                     if (!fireProgressUpdate(step++, imageFile.getAbsolutePath()) || isCanceled.get()) {
                         log.info("Batch auto-tagging cancelled by user.");
                         break;
@@ -354,9 +372,27 @@ public class AutoTagBatchDialog extends JDialog {
                     thread.setChatty(false); // quiet, you!
                     thread.run(); // run the request synchronously in this worker thread, so we can track progress and handle errors appropriately
 
-                    // We'll add a slight, 1s delay between requests, to avoid hammering the server.
-                    // Would this help avoid rate-limiting errors? Dunno, maybe. Just seems polite though.
-                    Thread.sleep(1000);
+                    // If this isn't the last image, let's pause (if so configured):
+                    // (this configurable pause is intended to help avoid rate-limiting on some servers)
+                    if (fileIndex < imagesToProcess.size() - 1) {
+                        for (int pauseStep = 0; pauseStep < pauseDurationS; pauseStep++) {
+                            // If the delay gets noticeable, log a message to avoid user panic:
+                            if (pauseStep == 2) {
+                                log.info("Auto-tag: Pausing for "
+                                                 + pauseDurationS
+                                                 + " seconds before sending next request...");
+                            }
+
+                            // We will pause for 1s intervals instead of one big pause, so we can check for "Cancel":
+                            Thread.sleep(1000L);
+
+                            // Report progress at 1s intervals solely so we can check for cancellation:
+                            if (!fireProgressUpdate(step++, "Pausing...") || isCanceled.get()) {
+                                log.info("Batch auto-tagging cancelled by user during pause.");
+                                break;
+                            }
+                        }
+                    }
                 }
 
                 completedSuccessfully = true;
