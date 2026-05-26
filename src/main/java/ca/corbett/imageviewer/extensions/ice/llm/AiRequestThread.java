@@ -53,7 +53,7 @@ public class AiRequestThread extends SimpleProgressWorker {
     private final AiConnectionManager.CompletionCallback onComplete;
     private final AiConnectionManager.ErrorCallback onError;
     private boolean chatty;
-    private int responseCode = 200;
+    private int responseCode = -1;
     private final long connectTimeoutMS;
     private final long requestTimeoutMS;
     private final boolean includeExistingTags;
@@ -90,7 +90,7 @@ public class AiRequestThread extends SimpleProgressWorker {
     }
 
     /**
-     * Returns the HTTP response code from the LLM request, or 200 if the request has not completed yet.
+     * Returns the HTTP response code from the LLM request, or -1 if no response has been received yet.
      */
     public int getResponseCode() {
         return responseCode;
@@ -104,7 +104,7 @@ public class AiRequestThread extends SimpleProgressWorker {
         //    2) base64 encode the image
         //    3) make the request
         fireProgressBegins(3);
-        this.responseCode = 200; // innocent until proven guilty
+        this.responseCode = -1; // begin with a sentinel value to distinguish "not yet received" from actual responses
         try {
 
             // These were validated by our AiManager, so we won't do it here again:
@@ -185,7 +185,7 @@ public class AiRequestThread extends SimpleProgressWorker {
                 ObjectMapper objectMapper = new ObjectMapper();
 
                 this.responseCode = response.statusCode(); // save this for later retrieval
-                if (response.statusCode() != 200) {
+                if (response.statusCode() < 200 || response.statusCode() > 299) {
                     try {
                         // We can try to parse out what happened:
                         AiErrorBody errorBody = objectMapper.readValue(response.body(), AiErrorBody.class);

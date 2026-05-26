@@ -49,12 +49,13 @@ import java.util.logging.Logger;
  * Note that batch auto-tagging, unlike single-image auto-tagging, will automatically update
  * the affected image(s) with the suggested tags, with no opportunity to review or edit them.
  * This is a bit of a YOLO option, especially if you have not constrained the LLM with
- * a restricted tag list. If any auto-tag request fails, the batch is aborted. Tags that
- * have already been applied at that point in the operation have already been saved.
+ * a restricted tag list. If any auto-tag request fails with a 5xx error response,
+ * the batch is aborted. Other error types will attempt to continue with the rest of the batch.
+ * </p>
+ * <p>
+ * If the batch is aborted or canceled partway through, tags that have already been applied
+ * up to that point in the operation have already been committed to disk.
  * (There is no "transaction rollback" option here... maybe a future feature).
- * Same thing applies if the batch operation is canceled - all tags that have already
- * been received from the LLM at that point are already saved. "Cancel" just stops
- * the operation from proceeding any further.
  * </p>
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
@@ -397,14 +398,18 @@ public class AutoTagBatchDialog extends JDialog {
             log.severe("Auto-tag operation failed: " + error.getMessage()
                                + " (code: " + error.getCode() + ", type: " + error.getType() + ")");
 
-            // If any request fails, we will abort the entire batch and show an error message to the user.
+            // Show error details to the user on the EDT:
             SwingUtilities.invokeLater(() -> {
+                String addendum = "";
+                if (error.getCode() >= 500 && error.getCode() <= 599) {
+                    addendum = "\n\nAborting batch operation.";
+                }
                 MainWindow.getInstance().showMessageDialog(NAME,
                                                            "Error auto-tagging image: " + imageFile.getName() +
                                                                    "\nError code: " + error.getCode() +
                                                                    "\nMessage: " + error.getMessage() +
                                                                    "\nError type: " + error.getType() +
-                                                                   "\n\nAborting batch operation.");
+                                                                   addendum);
             });
         }
 
