@@ -4,6 +4,7 @@ import ca.corbett.extras.EnhancedAction;
 import ca.corbett.imageviewer.extensions.ice.llm.AiConnectionManager;
 import ca.corbett.imageviewer.extensions.ice.ui.dialogs.AutoTagBatchDialog;
 import ca.corbett.imageviewer.ui.MainWindow;
+import ca.corbett.imageviewer.ui.imagesets.ImageSet;
 
 import java.awt.event.ActionEvent;
 import java.io.File;
@@ -47,29 +48,33 @@ public class AutoTagBatchAction extends EnhancedAction {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        File dir = MainWindow.getInstance().getCurrentDirectory();
-        if (dir == null) {
-            MainWindow.getInstance().showMessageDialog(NAME, "Nothing selected.");
-            return;
-        }
-
-        // Shouldn't be possible to launch this action in image set mode, because we only
-        // add the menu item in file system mode, but let's be sure about it:
-        if (MainWindow.getInstance().getBrowseMode() != MainWindow.BrowseMode.FILE_SYSTEM) {
-            MainWindow.getInstance().showMessageDialog(NAME,
-                                                       "Auto-tag: the batch tag feature is only available in file system browse mode.");
-            return;
-        }
-
-        // Make sure we have good LLM configuration before proceeding:
+        // We need to have a good LLM configuration before proceeding:
         AiConnectionManager aiManager = new AiConnectionManager(requestTemplate, taggedPrompt, taglessPrompt);
         if (!aiManager.isFeatureEnabled()) {
-            MainWindow.getInstance().showMessageDialog(NAME,
-                                                       "Auto-tag: the batch tag feature is not available because the LLM connection is not properly configured." +
-                                                               "\nVisit the Auto-tag settings page in application properties to set it up.");
+            String msg = "Auto-tag: the batch tag feature is not available because the LLM connection is not properly configured." +
+                    "\nVisit the Auto-tag settings page in application properties to set it up.";
+            MainWindow.getInstance().showMessageDialog(NAME, msg);
             return;
         }
 
-        new AutoTagBatchDialog(MainWindow.getInstance(), dir, aiManager).setVisible(true);
+        // If we're in filesystem mode, we need a directory to operate on:
+        if (MainWindow.getInstance().getBrowseMode() == MainWindow.BrowseMode.FILE_SYSTEM) {
+            File dir = MainWindow.getInstance().getCurrentDirectory();
+            if (dir == null) {
+                MainWindow.getInstance().showMessageDialog(NAME, "Nothing selected.");
+                return;
+            }
+            new AutoTagBatchDialog(MainWindow.getInstance(), dir, aiManager).setVisible(true);
+        }
+
+        // Otherwise, we need an ImageSet to operate on:
+        else {
+            ImageSet imageSet = MainWindow.getInstance().getImageSetPanel().getSelectedImageSet().orElse(null);
+            if (imageSet == null) {
+                MainWindow.getInstance().showMessageDialog(NAME, "Nothing selected.");
+                return;
+            }
+            new AutoTagBatchDialog(MainWindow.getInstance(), imageSet, aiManager).setVisible(true);
+        }
     }
 }
