@@ -434,12 +434,8 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
             }
 
             // Auto-tag menu items:
-            actions.add(AutoTagAction.getInstance(requestTemplate));
-            if (browseMode == MainWindow.BrowseMode.FILE_SYSTEM) {
-                // Batch mode only available if we're browsing directories:
-                // (though it would be a neat feature to batch-tag all images in an image set... maybe later)
-                actions.add(AutoTagBatchAction.getInstance(requestTemplate));
-            }
+            actions.add(AutoTagAction.getInstance(requestTemplate)); // tag single image
+            actions.add(AutoTagBatchAction.getInstance(requestTemplate)); // batch mode
         }
 
         return actions;
