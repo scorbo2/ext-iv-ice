@@ -436,6 +436,16 @@ public class AutoTagBatchDialog extends JDialog {
                     thread.setChatty(false); // quiet, you!
                     thread.run(); // run the request synchronously in this worker thread, so we can track progress and handle errors appropriately
 
+                    int code = thread.getResponseCode();
+                    if (code >= 500 && code <= 599) {
+                        // Executive decision: if we hit any kind of server error, abort the whole batch:
+                        // (debatable, but our assumption is that this is not recoverable and also not
+                        //  specific to this one image... it's more likely a bad API key or a server outage,
+                        //  or a local server that was accidentally started without mmproj or whatever)
+                        // Our error handler has already displayed the details, so we can just bail out:
+                        throw new Exception("Aborting batch after response code " + code); // will be handled below
+                    }
+
                     // If this isn't the last image, let's pause (if so configured):
                     // (this configurable pause is intended to help avoid rate-limiting on some servers)
                     boolean wasCanceled = false;
