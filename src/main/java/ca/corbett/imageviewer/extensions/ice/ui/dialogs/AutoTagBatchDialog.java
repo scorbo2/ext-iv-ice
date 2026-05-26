@@ -79,7 +79,7 @@ public class AutoTagBatchDialog extends JDialog {
     private BatchWorker batchWorker;
 
     /**
-     * Creates a BatchTagDialog suitable for image set mode.
+     * Creates an AutoTagBatchTagDialog suitable for image set mode.
      * In this mode, the given ImageSet will be auto-tagged.
      *
      * @param owner     The parent frame for this dialog.
@@ -91,7 +91,7 @@ public class AutoTagBatchDialog extends JDialog {
     }
 
     /**
-     * Creates a BatchTagDialog suitable for file system mode.
+     * Creates an AutoTagBatchTagDialog suitable for file system mode.
      * In this mode, the given directory will be scanned for eligible images, and those images will be auto-tagged.
      * The user will be presented with an option for whether to include subdirectories in the scan.
      *
