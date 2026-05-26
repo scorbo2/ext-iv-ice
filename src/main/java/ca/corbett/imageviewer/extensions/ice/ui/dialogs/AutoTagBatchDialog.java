@@ -114,6 +114,9 @@ public class AutoTagBatchDialog extends JDialog {
      */
     AutoTagBatchDialog(Frame owner, File dir, ImageSet imageSet, AiConnectionManager aiManager) {
         super(owner, NAME, true);
+        if (aiManager == null) {
+            throw new IllegalArgumentException("aiManager must be provided.");
+        }
         if (dir == null && imageSet == null) {
             throw new IllegalArgumentException("Either dir or imageSet must be provided.");
         }
