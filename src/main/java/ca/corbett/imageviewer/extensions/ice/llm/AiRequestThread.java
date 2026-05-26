@@ -136,7 +136,7 @@ public class AiRequestThread extends SimpleProgressWorker {
                     // Executive decision: ignore the "chatty" setting, as this is important:
                     String originalSize = FileSystemUtil.getPrintableSize(imageFile.length());
                     String newSize = FileSystemUtil.getPrintableSize(imageBytes.length);
-                    log.info("Scaled oversized image from " + originalSize + " to " + newSize
+                    log.info("Auto-tag: Scaled oversized image from " + originalSize + " to " + newSize
                                      + " - (original image file not affected). "
                                      + "You can change the downscale threshold in application settings.");
                     mimeType = "image/jpeg"; // Update the mime type since we converted to jpeg

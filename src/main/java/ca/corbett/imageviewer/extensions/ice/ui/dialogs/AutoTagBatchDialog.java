@@ -252,6 +252,7 @@ public class AutoTagBatchDialog extends JDialog {
 
         // Fire off a BatchWorker:
         MultiProgressDialog progressDialog = new MultiProgressDialog(this, "Auto-tagging images...");
+        progressDialog.setFormatString("%m"); // override default format... sigh, this is ugly but necessary
         batchWorker = new BatchWorker(eligibleImages);
         progressDialog.runWorker(batchWorker, true);
     }
@@ -373,6 +374,18 @@ public class AutoTagBatchDialog extends JDialog {
             isCanceled.set(true);
         }
 
+        /**
+         * Normally, MultiProgressDialog handles this for us. But because we are adding "fake"
+         * steps to account for our pauses between images, the default formatting will show
+         * incorrect numbers in the status message. For example: with a batch size of 3 images,
+         * the dialog will show "[1 of 5] filename.jpg", which is wrong. There are really only three
+         * steps, but the pause between images makes the total add up to 5. Fortunately, MultiProgressDialog
+         * gives us a way to completely override the default status message formatting and supply our own.
+         */
+        private String buildProgressMessage(File imageFile, int fileIndex) {
+            return String.format("[%d of %d] %s", fileIndex + 1, imagesToProcess.size(), imageFile.getName());
+        }
+
         private void handleResult(File imageFile, TagList tagList) {
             // An "empty" return is one where we got back either a completely empty list,
             // or a list with just the NO_TAG sentinel value.
@@ -432,7 +445,7 @@ public class AutoTagBatchDialog extends JDialog {
             try {
                 for (int fileIndex = 0; fileIndex < imagesToProcess.size(); fileIndex++) {
                     File imageFile = imagesToProcess.get(fileIndex);
-                    if (!fireProgressUpdate(step++, imageFile.getAbsolutePath()) || isCanceled.get()) {
+                    if (!fireProgressUpdate(step++, buildProgressMessage(imageFile, fileIndex)) || isCanceled.get()) {
                         log.info("Batch auto-tagging cancelled by user.");
                         break;
                     }
