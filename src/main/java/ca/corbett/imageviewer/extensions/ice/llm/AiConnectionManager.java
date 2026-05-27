@@ -2,6 +2,7 @@ package ca.corbett.imageviewer.extensions.ice.llm;
 
 import ca.corbett.extras.progress.MultiProgressDialog;
 import ca.corbett.extras.properties.AbstractProperty;
+import ca.corbett.extras.properties.BooleanProperty;
 import ca.corbett.extras.properties.PasswordProperty;
 import ca.corbett.extras.properties.PropertiesManager;
 import ca.corbett.extras.properties.ShortTextProperty;
@@ -19,18 +20,6 @@ import java.util.logging.Logger;
 /**
  * Responsible for sending image analysis requests to a configured LLM for auto-tagging.
  * This is an experimental feature, and all of this is subject to change.
- * <p>
- * Some TODO items, in no particular order:
- * </p>
- * <ul>
- *     <li>Right now we're using template json from our jar resources and just search and replacing certain keys
- *         to form the request. This works, but is overly simplistic. We should probably use the openai-java
- *         library instead of forming raw REST requests ourselves.</li>
- * </ul>
- * <p>
- *     The above TODOs will be handled in future tickets, if the initial proof-of-concept works out.
- *     The current implementation is minimal.
- * </p>
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
  */
@@ -56,7 +45,7 @@ public class AiConnectionManager {
     private String llmModel;
     private String llmApiKey;
     private TagList llmTags;
-    private final boolean warnUnrestricted;
+    private boolean warnUnrestricted;
 
     /**
      * If the LLM is unable to determine tags for some reason (the image is unclear, the given tag
@@ -65,7 +54,8 @@ public class AiConnectionManager {
     public static final String NO_TAGS = "none";
 
     // Our search and replace keys for preparing our request json from templates:
-    public static final String KEY_PROMPT = "{{PROMPT}}";
+    public static final String KEY_SYS_PROMPT = "{{SYS_PROMPT}}";
+    public static final String KEY_USER_PROMPT = "{{USER_PROMPT}}";
     public static final String KEY_MODEL = "{{MODEL}}";
     public static final String KEY_IMG_DATA = "{{IMGDATA}}";
     public static final String KEY_TAGS = "{{TAGS}}";
@@ -73,30 +63,11 @@ public class AiConnectionManager {
 
     /**
      * You must specify the json request template, and both the "tagged" and "tagless" system prompts.
-     *
-     * @param requestTemplate The json template for the request body, with placeholders for prompt, model, image data, and tags. This is required.
-     * @param taggedPrompt    The system prompt to use when a restricted tag list is provided. This is required.
-     * @param taglessPrompt   The system prompt to use when no tag list is provided. This is required.
      */
     public AiConnectionManager(String requestTemplate, String taggedPrompt, String taglessPrompt) {
-        this(requestTemplate, taggedPrompt, taglessPrompt, true);
-    }
-
-    /**
-     * This constructor overload allows you to specify whether we should emit a warning if the user has not
-     * configured any tag restrictions. The default is true, but you can turn it off to avoid log noise if
-     * you are handling that case yourself.
-     *
-     * @param requestTemplate The json template for the request body, with placeholders for prompt, model, image data, and tags. This is required.
-     * @param taggedPrompt The system prompt to use when a restricted tag list is provided. This is required.
-     * @param taglessPrompt The system prompt to use when no tag list is provided. This is required.
-     * @param warnUnrestricted    Emits a log warning if no tag restrictions are set in application properties.
-     */
-    public AiConnectionManager(String requestTemplate, String taggedPrompt, String taglessPrompt, boolean warnUnrestricted) {
         this.requestTemplate = requestTemplate;
         this.taggedPrompt = taggedPrompt;
         this.taglessPrompt = taglessPrompt;
-        this.warnUnrestricted = warnUnrestricted;
 
         // We'll load this here in the constructor.
         // Our assumption is that this class is instantiated on demand, rather than keeping an instance around.
@@ -112,6 +83,10 @@ public class AiConnectionManager {
      */
     public boolean isFeatureEnabled() {
         return featureEnabled;
+    }
+
+    public boolean isWarnOnUnrestrictedTagList() {
+        return warnUnrestricted;
     }
 
     /**
@@ -235,6 +210,7 @@ public class AiConnectionManager {
         llmModel = null;
         llmApiKey = null;
         llmTags = null;
+        warnUnrestricted = true; // default to true, in case we can't find our prop
 
         // If the json template is null or blank, there's no point in continuing:
         if (requestTemplate == null || requestTemplate.isBlank()) {
@@ -327,15 +303,20 @@ public class AiConnectionManager {
             log.severe("LLM API key property is not a PasswordProperty - disabling LLM feature");
             return;
         }
+
+        // Look up the setting that decides if we should log a warning of LLM tags are empty:
+        prop = propsManager.getProperty(IceExtension.llmWarnNoTagsProp);
+        if (prop instanceof BooleanProperty warnProp) {
+            warnUnrestricted = warnProp.getValue();
+        }
+        else {
+            // Not fatal (though very weird). Just stick with the default value:
+            log.warning("LLM warnUnrestricted property is not a BooleanProperty - defaulting to true");
+        }
+
         prop = propsManager.getProperty(IceExtension.llmTagsProp);
         if (prop instanceof ShortTextProperty tagsProp) {
             llmTags = TagList.of(tagsProp.getValue()); // TagList can parse this for us
-            if (llmTags.isEmpty() && warnUnrestricted) {
-                // This may result in very unexpected behavior. Perhaps the user is unaware of the consequences here:
-                log.warning("LLM tags list is empty - the LLM will be free to choose any tags it wants!" +
-                                    " This may result in unpredictable or inconsistent tags being chosen. " +
-                                    "You can supply a tag list in configuration to restrict the LLM.");
-            }
         }
         else {
             log.severe("LLM tags property is not a ShortTextProperty - disabling LLM feature");

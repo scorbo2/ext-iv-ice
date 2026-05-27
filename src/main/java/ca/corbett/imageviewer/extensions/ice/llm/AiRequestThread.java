@@ -7,6 +7,7 @@ import ca.corbett.imageviewer.extensions.ice.IceExtension;
 import ca.corbett.imageviewer.extensions.ice.TagList;
 import com.fasterxml.jackson.core.io.SerializedString;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.io.FilenameUtils;
 
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
@@ -52,8 +53,10 @@ public class AiRequestThread extends SimpleProgressWorker {
     private final AiConnectionManager.CompletionCallback onComplete;
     private final AiConnectionManager.ErrorCallback onError;
     private boolean chatty;
-    private long connectTimeoutMS;
-    private long requestTimeoutMS;
+    private int responseCode = -1;
+    private final long connectTimeoutMS;
+    private final long requestTimeoutMS;
+    private final boolean includeExistingTags;
 
     public AiRequestThread(File imageFile,
                            AiConnectionManager manager,
@@ -65,9 +68,10 @@ public class AiRequestThread extends SimpleProgressWorker {
         this.imageFile = imageFile;
         chatty = true;
 
-        // Look up our timeout settings now, before the thread starts:
+        // Look up our config settings now, before the thread starts:
         connectTimeoutMS = IceExtension.getConnectTimeoutMS();
         requestTimeoutMS = IceExtension.getRequestTimeoutMS();
+        includeExistingTags = IceExtension.getIncludeExistingTagsOption();
     }
 
     /**
@@ -85,6 +89,13 @@ public class AiRequestThread extends SimpleProgressWorker {
         this.chatty = chatty;
     }
 
+    /**
+     * Returns the HTTP response code from the LLM request, or -1 if no response has been received yet.
+     */
+    public int getResponseCode() {
+        return responseCode;
+    }
+
     @Override
     public void run() {
         // Let's get the progress bar up:
@@ -93,13 +104,19 @@ public class AiRequestThread extends SimpleProgressWorker {
         //    2) base64 encode the image
         //    3) make the request
         fireProgressBegins(3);
+        this.responseCode = -1; // begin with a sentinel value to distinguish "not yet received" from actual responses
         try {
 
             // These were validated by our AiManager, so we won't do it here again:
             URL url = manager.getLlmUrl();
             String model = manager.getLlmModel();
             String apiKey = manager.getLlmApiKey();
-            TagList tags = manager.getLlmTags();
+            TagList llmTags = manager.getLlmTags();
+
+            // Load the existing tags for this image, if any:
+            // (but only if that option is enabled, to save ourselves some I/O on every image file if not):
+            File tagFile = new File(imageFile.getParentFile(), FilenameUtils.getBaseName(imageFile.getName()) + ".ice");
+            TagList existingTags = includeExistingTags ? TagList.fromFile(tagFile) : new TagList();
 
             // We'll start with the mime type of the original image:
             String base64ImageData;
@@ -119,7 +136,7 @@ public class AiRequestThread extends SimpleProgressWorker {
                     // Executive decision: ignore the "chatty" setting, as this is important:
                     String originalSize = FileSystemUtil.getPrintableSize(imageFile.length());
                     String newSize = FileSystemUtil.getPrintableSize(imageBytes.length);
-                    log.info("Scaled oversized image from " + originalSize + " to " + newSize
+                    log.info("Auto-tag: Scaled oversized image from " + originalSize + " to " + newSize
                                      + " - (original image file not affected). "
                                      + "You can change the downscale threshold in application settings.");
                     mimeType = "image/jpeg"; // Update the mime type since we converted to jpeg
@@ -136,8 +153,17 @@ public class AiRequestThread extends SimpleProgressWorker {
                 return;
             }
 
+            // Log a nag warning if we have no LLM tag restrictions, since this may lead to unexpected results:
+            // (this can be disabled in the config if the user knows what they're doing)
+            if (llmTags.isEmpty() && manager.isWarnOnUnrestrictedTagList()) {
+                // This may result in very unexpected behavior. Perhaps the user is unaware of the consequences here:
+                log.warning("Auto-tag: the LLM tags list is empty - the LLM will be free to choose any tags it wants!" +
+                                    " This may result in unpredictable or inconsistent tags being chosen. " +
+                                    "You can supply a tag list in configuration to restrict the LLM.");
+            }
+
             // Do our tag substitution in our template to get the actual request body:
-            String jsonBody = prepareRequestBody(model, tags, base64ImageData, mimeType);
+            String jsonBody = prepareRequestBody(model, llmTags, existingTags, base64ImageData, mimeType);
 
             // Now we can fire off the request and parse the response:
             try {
@@ -158,7 +184,8 @@ public class AiRequestThread extends SimpleProgressWorker {
                 HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
                 ObjectMapper objectMapper = new ObjectMapper();
 
-                if (response.statusCode() != 200) {
+                this.responseCode = response.statusCode(); // save this for later retrieval
+                if (response.statusCode() < 200 || response.statusCode() > 299) {
                     try {
                         // We can try to parse out what happened:
                         AiErrorBody errorBody = objectMapper.readValue(response.body(), AiErrorBody.class);
@@ -220,24 +247,40 @@ public class AiRequestThread extends SimpleProgressWorker {
         return badList;
     }
 
-    private String prepareRequestBody(String model, TagList tags, String base64ImageData, String mimeType) {
-        // Figure out which prompt we need:
-        String prompt = tags.isEmpty() ? manager.getTaglessPrompt() : manager.getTaggedPrompt();
+    private String prepareRequestBody(String model, TagList tags, TagList existingTags, String base64ImageData, String mimeType) {
+        // Figure out which system prompt we need:
+        String sysPrompt = tags.isEmpty() ? manager.getTaglessPrompt() : manager.getTaggedPrompt();
 
         // Handle safe escaping of our String inputs:
         // (things like embedded quotation marks or line breaks can cause problems for us.)
         // (note that we don't worry about the base64 image data, since it should already be json-safe.)
-        String safePrompt = new String(new SerializedString(prompt).asQuotedChars());
+        String safeSysPrompt = new String(new SerializedString(sysPrompt).asQuotedChars());
+        String safeUserPrompt = new String(new SerializedString(getUserPrompt(existingTags)).asQuotedChars());
         String safeModel = new String(new SerializedString(model).asQuotedChars());
         String safeTags = new String(new SerializedString(tags.toString()).asQuotedChars());
 
         // Now we can safely do our string replacement to get the final request body:
         return manager.getRequestTemplate()
-                      .replace(AiConnectionManager.KEY_PROMPT, safePrompt)
+                      .replace(AiConnectionManager.KEY_SYS_PROMPT, safeSysPrompt)
+                      .replace(AiConnectionManager.KEY_USER_PROMPT, safeUserPrompt)
                       .replace(AiConnectionManager.KEY_MODEL, safeModel)
                       .replace(AiConnectionManager.KEY_IMG_DATA, base64ImageData)
                       .replace(AiConnectionManager.KEY_TAGS, safeTags)
                       .replace(AiConnectionManager.KEY_MIME_TYPE, mimeType);
+    }
+
+    private String getUserPrompt(TagList existingTags) {
+        String userPrompt = "Please tag this image."; // simple prompt that defers entirely to the SYS_PROMPT.
+
+        if (includeExistingTags && !existingTags.isEmpty()) {
+            // Fancy prompt that tries to provide additional guidance based on what's already there:
+            userPrompt += " The existing tags for this image are: "
+                    + existingTags.toString() + ". "
+                    + "Only return tags if they are not already covered by the existing tags. "
+                    + "If the image is already adequately tagged, return the fixed string 'none'.";
+        }
+
+        return userPrompt;
     }
 
     /**

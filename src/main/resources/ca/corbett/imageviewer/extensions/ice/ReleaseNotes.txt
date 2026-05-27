@@ -1,6 +1,14 @@
 ext-iv-ice Release Notes
 Author: Steve Corbett
 
+Version 3.5.0 [TODO release date]
+  #109 - Auto-tag: emit one-time warning if thinking mode detected
+  #107 - Auto-tag: fix minor bug in batch mode progress reporting
+  #105 - Auto-tag: add support for batch mode in image set mode
+  #99 - Auto-tag: optionally supply existing tags to the LLM
+  #98 - Auto-tag: add configurable pause in batch mode
+  #97 - Auto-tag: LogConsole integration, configurable log warnings
+
 Version 3.4.0 [2026-05-18]
   #94 - Auto-tag: remove "thinking" data from some LLM models
   #91 - Auto-tag: add threshold option for image downscaling

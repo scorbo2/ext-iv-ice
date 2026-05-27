@@ -3,14 +3,14 @@
   "messages": [
     {
       "role": "system",
-      "content": "{{PROMPT}}"
+      "content": "{{SYS_PROMPT}}"
     },
     {
       "role": "user",
       "content": [
         {
           "type": "text",
-          "text": "Please tag this image"
+          "text": "{{USER_PROMPT}}"
         },
         {
           "type": "image_url",
