@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
 /**
@@ -49,7 +50,7 @@ public class AiCompletionsBody {
 
     private static final Logger log = Logger.getLogger(AiCompletionsBody.class.getName());
 
-    private static boolean thinkingWarningIssued = false;
+    private static final AtomicBoolean thinkingWarningIssued = new AtomicBoolean(false);
 
     @JsonProperty("choices")
     private List<ChoiceNode> choices;
@@ -81,28 +82,32 @@ public class AiCompletionsBody {
 
         TagList allTags = new TagList();
         for (ChoiceNode choice : choices) {
-            if (choice != null && choice.message != null && choice.message.content != null) {
-                String content = choice.message.content;
+            if (choice != null && choice.message != null) {
 
-                // Some models return lingering </think> tags in the output.
-                // I don't know why this happens.
-                // The same model might return a perfectly normal tag list 9 times in a row,
-                // and then give me a </think> in the middle of the list on the 10th try.
-                // We'll just trim them as we see it, and log it for debugging purposes.
-                if (content.contains("think>")) {
-                    log.warning("The model returned thinking data in the tag list - removed.");
+                // If we got message content, try to parse it as a tag list:
+                if (choice.message.content != null) {
+                    String content = choice.message.content;
+
+                    // Some models return lingering </think> tags in the output.
+                    // I don't know why this happens.
+                    // The same model might return a perfectly normal tag list 9 times in a row,
+                    // and then give me a </think> in the middle of the list on the 10th try.
+                    // We'll just trim them as we see it, and log it for debugging purposes.
+                    if (content.contains("think>")) {
+                        log.warning("The model returned thinking data in the tag list - removed.");
+                    }
+                    content = content.replace("</think>", "").trim();
+                    content = content.replace("<think>", "").trim(); // just in case (never seen this)
+
+                    allTags.addAll(TagList.of(content));
                 }
-                content = content.replace("</think>", "").trim();
-                content = content.replace("<think>", "").trim(); // just in case (never seen this)
-
-                allTags.addAll(TagList.of(content));
 
                 // Emit a one-time warning if we detect reasoning content in any response:
-                if (choice.message.reasoningContent != null && !thinkingWarningIssued) {
+                if (choice.message.reasoningContent != null && !thinkingWarningIssued.get()) {
                     log.warning("The model appears to be configured for thinking/reasoning mode. " +
                                         "This is very slow for image tagging! " +
                                         "Recommendation: if you have access to server settings, disable this.");
-                    thinkingWarningIssued = true;
+                    thinkingWarningIssued.set(true);
                 }
             }
         }
