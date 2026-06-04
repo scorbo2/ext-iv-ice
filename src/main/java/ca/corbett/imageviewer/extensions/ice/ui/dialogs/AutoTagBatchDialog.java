@@ -442,11 +442,13 @@ public class AutoTagBatchDialog extends JDialog {
             fireProgressBegins(imagesToProcess.size() + pauseSteps);
             int step = 0;
             boolean completedSuccessfully = false;
+            boolean wasCanceled = false;
             try {
                 for (int fileIndex = 0; fileIndex < imagesToProcess.size(); fileIndex++) {
                     File imageFile = imagesToProcess.get(fileIndex);
                     if (!fireProgressUpdate(step++, buildProgressMessage(imageFile, fileIndex)) || isCanceled.get()) {
                         log.info("Batch auto-tagging cancelled by user.");
+                        wasCanceled = true;
                         break;
                     }
 
@@ -464,12 +466,12 @@ public class AutoTagBatchDialog extends JDialog {
                         //  specific to this one image... it's more likely a bad API key or a server outage,
                         //  or a local server that was accidentally started without mmproj or whatever)
                         // Our error handler has already displayed the details, so we can just bail out:
+                        wasCanceled = true;
                         throw new Exception("Aborting batch after response code " + code); // will be handled below
                     }
 
                     // If this isn't the last image, let's pause (if so configured):
                     // (this configurable pause is intended to help avoid rate-limiting on some servers)
-                    boolean wasCanceled = false;
                     if (fileIndex < imagesToProcess.size() - 1) {
                         for (int pauseStep = 0; pauseStep < pauseDurationS; pauseStep++) {
                             // If the delay gets noticeable, log a message to avoid user panic:
@@ -497,7 +499,7 @@ public class AutoTagBatchDialog extends JDialog {
                     }
                 }
 
-                completedSuccessfully = true;
+                completedSuccessfully = !wasCanceled;
             }
             catch (Exception e) {
                 log.severe("Batch auto-tagging failed: " + e.getMessage());
