@@ -10,6 +10,7 @@ import ca.corbett.forms.Alignment;
 import ca.corbett.forms.FormPanel;
 import ca.corbett.forms.fields.CheckBoxField;
 import ca.corbett.forms.fields.LabelField;
+import ca.corbett.forms.fields.NumberField;
 import ca.corbett.forms.fields.ShortTextField;
 import ca.corbett.imageviewer.AppConfig;
 import ca.corbett.imageviewer.extensions.ice.IceExtension;
@@ -19,6 +20,7 @@ import ca.corbett.imageviewer.extensions.ice.llm.AiConnectionManager;
 import ca.corbett.imageviewer.extensions.ice.llm.AiErrorBody;
 import ca.corbett.imageviewer.extensions.ice.llm.AiRequestThread;
 import ca.corbett.imageviewer.ui.MainWindow;
+import ca.corbett.imageviewer.ui.imagesets.ImageSet;
 import org.apache.commons.io.FilenameUtils;
 
 import javax.swing.BorderFactory;
@@ -35,22 +37,25 @@ import java.awt.event.WindowEvent;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
 /**
- * Shows a dialog that allows auto-tagging of all jpeg and/or png images in the selected
- * directory, with optional recursion. This feature is experimental and subject to change!
+ * Shows a dialog that allows auto-tagging of all jpeg and/or png images either in
+ * a given directory (with optional recursion), or in a provided ImageSet.
+ * This feature is experimental and subject to change!
  * <p>
  * Note that batch auto-tagging, unlike single-image auto-tagging, will automatically update
  * the affected image(s) with the suggested tags, with no opportunity to review or edit them.
  * This is a bit of a YOLO option, especially if you have not constrained the LLM with
- * a restricted tag list. If any auto-tag request fails, the batch is aborted. Tags that
- * have already been applied at that point in the operation have already been saved.
+ * a restricted tag list. If any auto-tag request fails with a 5xx error response,
+ * the batch is aborted. Other error types will attempt to continue with the rest of the batch.
+ * </p>
+ * <p>
+ * If the batch is aborted or canceled partway through, tags that have already been applied
+ * up to that point in the operation have already been committed to disk.
  * (There is no "transaction rollback" option here... maybe a future feature).
- * Same thing applies if the batch operation is canceled - all tags that have already
- * been received from the LLM at that point are already saved. "Cancel" just stops
- * the operation from proceeding any further.
  * </p>
  *
  * @author <a href="https://github.com/scorbo2">scorbo2</a>
@@ -62,22 +67,69 @@ public class AutoTagBatchDialog extends JDialog {
     private static final String NAME = "Auto-tag batch";
 
     private final AiConnectionManager aiManager;
-    private final File dir;
+    private final File dir; // null if we're in image set mode
+    private final ImageSet imageSet; // null if we're in file system mode
     private final List<File> eligibleImages = new ArrayList<>();
-    private final CheckBoxField recursiveField;
+    private final CheckBoxField recursiveField; // ignored in image set mode
     private final LabelField imageCountLabel;
     private final CheckBoxField useConfigRestrictionField;
     private final ShortTextField tagRestrictionField;
+    private final NumberField batchPauseField;
     private boolean isOperationInProgress;
     private BatchWorker batchWorker;
 
+    /**
+     * Creates an AutoTagBatchTagDialog suitable for image set mode.
+     * In this mode, the given ImageSet will be auto-tagged.
+     *
+     * @param owner     The parent frame for this dialog.
+     * @param imageSet  The ImageSet to be auto-tagged. Must not be null.
+     * @param aiManager The AiConnectionManager to use for making requests to the LLM server. Must not be null.
+     */
+    public AutoTagBatchDialog(Frame owner, ImageSet imageSet, AiConnectionManager aiManager) {
+        this(owner, null, imageSet, aiManager);
+    }
+
+    /**
+     * Creates an AutoTagBatchTagDialog suitable for file system mode.
+     * In this mode, the given directory will be scanned for eligible images, and those images will be auto-tagged.
+     * The user will be presented with an option for whether to include subdirectories in the scan.
+     *
+     * @param owner     The parent frame for this dialog.
+     * @param dir       The directory to be scanned for eligible images. Must not be null.
+     * @param aiManager The AiConnectionManager to use for making requests to the LLM server. Must not be null.
+     */
     public AutoTagBatchDialog(Frame owner, File dir, AiConnectionManager aiManager) {
+        this(owner, dir, null, aiManager);
+    }
+
+    /**
+     * Used internally by the two public constructors. Exactly one of dir or imageSet must be non-null.
+     * This determines which mode the dialog operates in (file system vs image set).
+     *
+     * @param owner     The parent frame for this dialog.
+     * @param dir       The directory to be scanned for eligible images. Must be non-null if imageSet is null.
+     * @param imageSet  The ImageSet to be auto-tagged. Must be non-null if dir is null.
+     * @param aiManager The AiConnectionManager to use for making requests to the LLM server. Must not be null.
+     */
+    AutoTagBatchDialog(Frame owner, File dir, ImageSet imageSet, AiConnectionManager aiManager) {
         super(owner, NAME, true);
+        if (aiManager == null) {
+            throw new IllegalArgumentException("aiManager must be provided.");
+        }
+        if (dir == null && imageSet == null) {
+            throw new IllegalArgumentException("Either dir or imageSet must be provided.");
+        }
+        if (dir != null && imageSet != null) {
+            throw new IllegalArgumentException("Only one of dir or imageSet can be provided.");
+        }
         this.dir = dir;
+        this.imageSet = imageSet;
         this.aiManager = aiManager;
         batchWorker = null;
         recursiveField = new CheckBoxField("Include subdirectories", true);
         recursiveField.addValueChangedListener(e -> rescan());
+        recursiveField.setVisible(dir != null); // irrelevant in image set mode, so hide it
         imageCountLabel = new LabelField("Image count:", "0");
         imageCountLabel.setHelpText("Note: Only JPEG and PNG images are counted here.");
         tagRestrictionField = new ShortTextField("Tag restriction", 20);
@@ -88,20 +140,25 @@ public class AutoTagBatchDialog extends JDialog {
         useConfigRestrictionField = new CheckBoxField("Use tag restrictions from configuration", true);
         useConfigRestrictionField.addValueChangedListener(
                 e -> tagRestrictionField.setEnabled(!useConfigRestrictionField.isChecked()));
+        batchPauseField = new NumberField("Request pause (s)", 1, 0, 30, 1);
+        batchPauseField.setHelpText("<html>Number of seconds to pause between requests.<br>" +
+                                            "This may help avoid rate-limiting errors on some servers.<br>" +
+                                            "Set this to 0 to just power through at full speed.</html>");
         FormPanel formPanel = new FormPanel(Alignment.TOP_LEFT);
         formPanel.setBorderMargin(16);
         formPanel.add(List.of(
                 recursiveField,
                 imageCountLabel,
                 useConfigRestrictionField,
-                tagRestrictionField
+                tagRestrictionField,
+                batchPauseField
         ));
 
         setLayout(new BorderLayout());
         add(formPanel, BorderLayout.CENTER);
         add(buildButtonPanel(), BorderLayout.SOUTH);
 
-        setSize(600, 240);
+        setSize(480, 280);
         setResizable(false);
         setLocationRelativeTo(owner);
         setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
@@ -126,6 +183,23 @@ public class AutoTagBatchDialog extends JDialog {
      * be considerable, so we should give them a heads-up in advance.
      */
     private void rescan() {
+        // In image set mode, we don't need a scan worker, we can just
+        // count up all eligible images directly in this thread:
+        if (imageSet != null) {
+            eligibleImages.clear();
+            for (String imageFilePath : imageSet.getImageFilePaths()) {
+                String filename = imageFilePath.toLowerCase(Locale.ROOT);
+                if (!filename.endsWith(".jpg") && !filename.endsWith(".jpeg") && !filename.endsWith(".png")) {
+                    continue; // skip ineligible file types
+                }
+                eligibleImages.add(new File(imageFilePath));
+            }
+            imageCountLabel.setText(String.valueOf(eligibleImages.size()));
+            return;
+        }
+
+        // In file system mode, things are a bit harder.
+        // First, we need a valid directory:
         if (dir == null || !dir.isDirectory()) {
             log.warning("No directory selected.");
             return;
@@ -152,8 +226,10 @@ public class AutoTagBatchDialog extends JDialog {
     private void doBatch() {
         // Quick sanity check: if we have no images, there's nothing we can do here:
         if (eligibleImages.isEmpty()) {
-            MainWindow.getInstance().showMessageDialog(NAME,
-                                                       "No eligible images found in the selected directory.");
+            String message = dir != null
+                    ? "No eligible images found in the selected directory."
+                    : "No eligible images found in the selected image set.";
+            MainWindow.getInstance().showMessageDialog(NAME, message);
             log.info("No eligible images found, aborting batch auto-tag.");
             return;
         }
@@ -171,19 +247,12 @@ public class AutoTagBatchDialog extends JDialog {
         }
         aiManager.setLlmTags(restrictionTags); // okay if empty - LLM will choose tags
 
-        // Emit a log warning if there are no tag restrictions:
-        if (aiManager.getLlmTags().isEmpty()) {
-            // This may result in very unexpected behavior. Perhaps the user is unaware of the consequences here:
-            log.warning("LLM tags list is empty - the LLM will be free to choose any tags it wants!" +
-                                " This may result in unpredictable or inconsistent tags being chosen. " +
-                                "You can supply a tag list in configuration to restrict the LLM.");
-        }
-
         // Set the flag to prevent concurrent batch operations:
         isOperationInProgress = true;
 
         // Fire off a BatchWorker:
         MultiProgressDialog progressDialog = new MultiProgressDialog(this, "Auto-tagging images...");
+        progressDialog.setFormatString("%m"); // override default format... sigh, this is ugly but necessary
         batchWorker = new BatchWorker(eligibleImages);
         progressDialog.runWorker(batchWorker, true);
     }
@@ -209,7 +278,10 @@ public class AutoTagBatchDialog extends JDialog {
         JButton button = new JButton("Rescan");
         button.setPreferredSize(new Dimension(100, 25));
         button.addActionListener(e -> rescan());
-        buttonPanel.add(button);
+        if (dir != null) {
+            // This button only makes sense in filesystem mode
+            buttonPanel.add(button);
+        }
 
         button = new JButton("Auto-tag!");
         button.setPreferredSize(new Dimension(100, 25));
@@ -289,15 +361,29 @@ public class AutoTagBatchDialog extends JDialog {
 
         private final List<File> imagesToProcess;
         private final AtomicBoolean isCanceled;
+        private final int pauseDurationS;
 
         public BatchWorker(List<File> imagesToProcess) {
             // Make a copy of the list to avoid concurrency issues:
             this.imagesToProcess = new ArrayList<>(imagesToProcess);
             isCanceled = new AtomicBoolean(false);
+            pauseDurationS = batchPauseField.getCurrentValue().intValue();
         }
 
         public void cancel() {
             isCanceled.set(true);
+        }
+
+        /**
+         * Normally, MultiProgressDialog handles this for us. But because we are adding "fake"
+         * steps to account for our pauses between images, the default formatting will show
+         * incorrect numbers in the status message. For example: with a batch size of 3 images,
+         * the dialog will show "[1 of 5] filename.jpg", which is wrong. There are really only three
+         * steps, but the pause between images makes the total add up to 5. Fortunately, MultiProgressDialog
+         * gives us a way to completely override the default status message formatting and supply our own.
+         */
+        private String buildProgressMessage(File imageFile, int fileIndex) {
+            return String.format("[%d of %d] %s", fileIndex + 1, imagesToProcess.size(), imageFile.getName());
         }
 
         private void handleResult(File imageFile, TagList tagList) {
@@ -328,30 +414,41 @@ public class AutoTagBatchDialog extends JDialog {
             log.severe("Auto-tag operation failed: " + error.getMessage()
                                + " (code: " + error.getCode() + ", type: " + error.getType() + ")");
 
-            // If any request fails, we will abort the entire batch and show an error message to the user.
+            // Show error details to the user on the EDT:
             SwingUtilities.invokeLater(() -> {
+                String addendum = "";
+                if (error.getCode() >= 500 && error.getCode() <= 599) {
+                    addendum = "\n\nAborting batch operation.";
+                }
                 MainWindow.getInstance().showMessageDialog(NAME,
                                                            "Error auto-tagging image: " + imageFile.getName() +
                                                                    "\nError code: " + error.getCode() +
                                                                    "\nMessage: " + error.getMessage() +
                                                                    "\nError type: " + error.getType() +
-                                                                   "\n\nAborting batch operation.");
+                                                                   addendum);
             });
-
-            // We can break out of the loop here, which will cause the batch operation to end.
-            // The isOperationInProgress flag will be reset in the finally block, allowing the user to try again if they want.
-            throw new RuntimeException("Batch auto-tagging aborted due to error.");
         }
 
         @Override
         public void run() {
-            fireProgressBegins(imagesToProcess.size());
+            // Our progress reporting mechanism doesn't give us a great way to check for user cancellation
+            // other than when we report progress updates. This means that if we do Thread.sleep(20000), and the user
+            // hits Cancel halfway through that 20s pause, we have no way of knowing about it until the sleep is over.
+            // The best way around this is to add "fake" steps at 1s intervals during our pauses, so that
+            // we can report "progress" for the sole reason of checking for cancellation. Not great, but it works.
+            // Note: we subtract 1 from the image count because we don't need a pause after the last request.
+            // Also note: if pauseDurationS is 0, this evaluates to 0, so we won't add fake steps as there is no pause.
+            final int pauseSteps = (imagesToProcess.size() - 1) * pauseDurationS;
+            fireProgressBegins(imagesToProcess.size() + pauseSteps);
             int step = 0;
             boolean completedSuccessfully = false;
+            boolean wasCanceled = false;
             try {
-                for (File imageFile : imagesToProcess) {
-                    if (!fireProgressUpdate(step++, imageFile.getAbsolutePath()) || isCanceled.get()) {
+                for (int fileIndex = 0; fileIndex < imagesToProcess.size(); fileIndex++) {
+                    File imageFile = imagesToProcess.get(fileIndex);
+                    if (!fireProgressUpdate(step++, buildProgressMessage(imageFile, fileIndex)) || isCanceled.get()) {
                         log.info("Batch auto-tagging cancelled by user.");
+                        wasCanceled = true;
                         break;
                     }
 
@@ -362,12 +459,47 @@ public class AutoTagBatchDialog extends JDialog {
                     thread.setChatty(false); // quiet, you!
                     thread.run(); // run the request synchronously in this worker thread, so we can track progress and handle errors appropriately
 
-                    // We'll add a slight, 1s delay between requests, to avoid hammering the server.
-                    // Would this help avoid rate-limiting errors? Dunno, maybe. Just seems polite though.
-                    Thread.sleep(1000);
+                    int code = thread.getResponseCode();
+                    if (code >= 500 && code <= 599) {
+                        // Executive decision: if we hit any kind of server error, abort the whole batch:
+                        // (debatable, but our assumption is that this is not recoverable and also not
+                        //  specific to this one image... it's more likely a bad API key or a server outage,
+                        //  or a local server that was accidentally started without mmproj or whatever)
+                        // Our error handler has already displayed the details, so we can just bail out:
+                        wasCanceled = true;
+                        throw new Exception("Aborting batch after response code " + code); // will be handled below
+                    }
+
+                    // If this isn't the last image, let's pause (if so configured):
+                    // (this configurable pause is intended to help avoid rate-limiting on some servers)
+                    if (fileIndex < imagesToProcess.size() - 1) {
+                        for (int pauseStep = 0; pauseStep < pauseDurationS; pauseStep++) {
+                            // If the delay gets noticeable, log a message to avoid user panic:
+                            if (pauseStep == 2) {
+                                log.info("Auto-tag: Pausing for "
+                                                 + pauseDurationS
+                                                 + " seconds before sending next request...");
+                            }
+
+                            // We will pause for 1s intervals instead of one big pause, so we can check for "Cancel":
+                            Thread.sleep(1000L);
+
+                            // Report progress at 1s intervals solely so we can check for cancellation:
+                            if (!fireProgressUpdate(step++, "Pausing...") || isCanceled.get()) {
+                                log.info("Batch auto-tagging cancelled by user during pause.");
+                                wasCanceled = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    // Don't continue with the batch loop if we are canceling out:
+                    if (wasCanceled) {
+                        break;
+                    }
                 }
 
-                completedSuccessfully = true;
+                completedSuccessfully = !wasCanceled;
             }
             catch (Exception e) {
                 log.severe("Batch auto-tagging failed: " + e.getMessage());

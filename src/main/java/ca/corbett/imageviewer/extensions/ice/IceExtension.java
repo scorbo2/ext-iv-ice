@@ -5,6 +5,7 @@ import ca.corbett.extras.EnhancedAction;
 import ca.corbett.extras.LookAndFeelManager;
 import ca.corbett.extras.RedispatchingMouseAdapter;
 import ca.corbett.extras.io.KeyStrokeManager;
+import ca.corbett.extras.logging.LogConsoleStyle;
 import ca.corbett.extras.properties.AbstractProperty;
 import ca.corbett.extras.properties.BooleanProperty;
 import ca.corbett.extras.properties.ComboProperty;
@@ -18,6 +19,7 @@ import ca.corbett.extras.properties.ShortTextProperty;
 import ca.corbett.forms.fields.LongTextField;
 import ca.corbett.imageviewer.AppConfig;
 import ca.corbett.imageviewer.ImageOperation;
+import ca.corbett.imageviewer.LogConsoleManager;
 import ca.corbett.imageviewer.extensions.ImageViewerExtension;
 import ca.corbett.imageviewer.extensions.ice.actions.AutoTagAction;
 import ca.corbett.imageviewer.extensions.ice.actions.AutoTagBatchAction;
@@ -114,7 +116,9 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
     public static final String llmModelProp = "ICE.Auto-tag.model";
     public static final String llmUrlProp = "ICE.Auto-tag.url";
     public static final String llmDownscaleProp = "ICE.Auto-tag.downscaleForLLM";
+    public static final String llmIncludeExisting = "ICE.Auto-tag.includeExistingTags";
     public static final String llmTagsProp = "ICE.Auto-tag.tags";
+    public static final String llmWarnNoTagsProp = "ICE.Auto-tag.warnIfNoTagRestrictions";
     public static final String autoTagKeyProp = "ICE.Auto-tag.autoTagHotKey";
     public static final String autoTagBatchKeyProp = "ICE.Auto-tag.autoTagBatchHotKey";
     public static final String sysPromptTaggedProp = "ICE.Auto-tag.sysPromptTagged";
@@ -226,11 +230,20 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
         list.add(new ShortTextProperty(llmModelProp, "LLM model name:", "gpt-3.5-turbo")
                          .setAllowBlank(true) // blank means not needed for this server
                          .setHelpText("<html>The name of the model to use for tag generation.</html>"));
+        list.add(new BooleanProperty(llmIncludeExisting, "Include existing tags in LLM prompt", false)
+                         .setHelpText(
+                                 "<html>If checked, the image's existing tags, if any, will be sent to the LLM when auto-tagging.<br>" +
+                                         "This might be useful to avoid redundant tags in some cases.</html>"));
         list.add(new ShortTextProperty(llmTagsProp, "LLM tag list:", "")
                          .setAllowBlank(true) // blank means the LLM will suggest tags without constraints
                          .setHelpText("<html>Comma-separated list of tags.<br>" +
                                               "If specified, tag generation will be restricted to just these.<br>" +
                                               "Leave blank to let the LLM decide (results unpredictable!)</html>"));
+        list.add(new BooleanProperty(llmWarnNoTagsProp, "Log a warning if no tag restrictions are set", true)
+                         .setHelpText(
+                                 "<html>Logs a warning if you try to auto-tag an image without specifying any tags in the LLM tag list.<br>" +
+                                         "This is because unrestricted tag generation can produce unpredictable or inconsistent results.<br>" +
+                                         "Uncheck this option to disable the log warning.</html>"));
         list.add(new KeyStrokeProperty(autoTagKeyProp, "Auto-tag selected:",
                                        KeyStrokeManager.parseKeyStroke("F9"), // Why F9? I dunno.
                                        AutoTagAction.getInstance(requestTemplate))
@@ -313,6 +326,16 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
         }
         quickTagPanels.clear();
         tagPreviewPanels.clear();
+    }
+
+    /**
+     * We override this to provide custom styles for the ImageViewer log console.
+     */
+    @Override
+    public List<LogConsoleStyle> getLogConsoleStyles() {
+        List<LogConsoleStyle> styles = new ArrayList<>();
+        styles.add(LogConsoleManager.createStyle("Auto-tag:", true, Color.MAGENTA, true));
+        return styles;
     }
 
     /**
@@ -411,12 +434,8 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
             }
 
             // Auto-tag menu items:
-            actions.add(AutoTagAction.getInstance(requestTemplate));
-            if (browseMode == MainWindow.BrowseMode.FILE_SYSTEM) {
-                // Batch mode only available if we're browsing directories:
-                // (though it would be a neat feature to batch-tag all images in an image set... maybe later)
-                actions.add(AutoTagBatchAction.getInstance(requestTemplate));
-            }
+            actions.add(AutoTagAction.getInstance(requestTemplate)); // tag single image
+            actions.add(AutoTagBatchAction.getInstance(requestTemplate)); // batch mode
         }
 
         return actions;
@@ -764,6 +783,20 @@ public class IceExtension extends ImageViewerExtension implements UIReloadable {
         }
 
         return 60000; // default to 60 seconds if something goes wrong
+    }
+
+    /**
+     * Returns the currently-configured value of the "include existing tags in LLM prompt" option.
+     */
+    public static boolean getIncludeExistingTagsOption() {
+        // Look up our config prop:
+        PropertiesManager propsManager = AppConfig.getInstance().getPropertiesManager();
+        AbstractProperty prop = propsManager.getProperty(IceExtension.llmIncludeExisting);
+        if (prop instanceof BooleanProperty boolProp) {
+            return boolProp.getValue();
+        }
+
+        return false; // default to false if something goes wrong
     }
 
     /**
